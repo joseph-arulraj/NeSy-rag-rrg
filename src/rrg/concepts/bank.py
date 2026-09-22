@@ -75,12 +75,24 @@ class ConceptBank:
         self.info = info
         self.tags = tags
         self._device_cache: dict[str, "torch.Tensor"] = {}
+        self._grouping_index_cache = None
 
     def with_tags(self, tags: list) -> "ConceptBank":
         """Returns a new ConceptBank sharing this one's embeddings (no copy) with tags attached."""
         if len(tags) != len(self.concepts):
             raise BankLoadError(f"{len(tags)} tags for {len(self.concepts)} concepts -- misaligned")
         return ConceptBank(self.concepts, self.embeddings, self.info, tags)
+
+    def grouping_index(self):
+        """The image-independent grouping structure (concepts/grouping.GroupingIndex), built
+        once and cached on this instance. Scoring N images against the same bank should build
+        this once, not per image -- pass it explicitly to group_and_rank when scoring many
+        images in a loop, rather than relying on this cache alone, to make the reuse visible
+        at the call site."""
+        if self._grouping_index_cache is None:
+            from .grouping import build_grouping_index  # local import: avoids a bank<->grouping import cycle
+            self._grouping_index_cache = build_grouping_index(self)
+        return self._grouping_index_cache
 
     # ---- construction
     @classmethod

@@ -18,6 +18,9 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=7.0"]
 faiss = ["faiss-cpu>=1.7.4"]      # needed when retrieval.backend: faiss (HPC). On macOS pip's torch + faiss-cpu clash: use backend: numpy
+radgraph = ["radgraph>=0.1.18"]  # N15/N29 and offline concept tagging. If install fails with an
+# AttributeError about TokenizersBackend/encode_plus, pin: pip install "transformers==4.49.0" "tokenizers<0.22"
+# (radgraph vendors an old allennlp shim incompatible with the newest transformers/tokenizers releases)
 
 [tool.setuptools.packages.find]
 where = ["src"]

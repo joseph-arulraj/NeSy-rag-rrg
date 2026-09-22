@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nesy-rrg"
+version = "0.1.0"
+description = "Evidence-based radiology report generation (neuro-symbolic RAG) on MIMIC-CXR"
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.1",
+    "numpy>=1.24",
+    "pillow>=9.0",
+    "pyyaml>=6.0",
+]
+# The cloned CLEAR repo is a separate prerequisite (not on PyPI):   pip install -e ./CLEAR
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+faiss = ["faiss-cpu>=1.7.4"]      # needed when retrieval.backend: faiss (HPC). On macOS pip's torch + faiss-cpu clash: use backend: numpy
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+markers = [
+    "assets: needs the real CLEAR weights / concept files under paths.*",
+    "sample: needs the MIMIC-CXR local sample under paths.mimic_root",
+]

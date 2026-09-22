@@ -1,0 +1,133 @@
+# =============================================================================
+# Default configuration (local Mac development profile).
+#
+# Every folder path and tunable variable used by the code lives in this file.
+# Nothing in src/ hard-codes a path. Profiles overlay this file:
+#     configs/hpc.yaml  -> H100 cluster (fill in the paths marked CHANGE_ME)
+# Select a profile with  --config configs/hpc.yaml  or  RRG_CONFIG=configs/hpc.yaml
+# Single values can be overridden on the CLI:  --set clear.batch_size=128
+#
+# Relative paths are resolved against the project root (the folder holding configs/).
+# =============================================================================
+
+paths:
+  # --- MIMIC-CXR-JPG (folder that contains files/ and the *.csv.gz files) ---
+  mimic_root: data/mimic_cxr_sample
+  # Reports: either a zip (local sample) or an extracted directory (HPC). Set one, leave the other null.
+  mimic_reports_zip: data/mimic_cxr_sample/mimic-cxr-reports.zip
+  mimic_reports_dir: null
+  # --- CLEAR assets ---
+  model_weights_dir: model_weights
+  clear_checkpoint: model_weights/best_model.pt                 # DINOv2 ViT-B/14 image encoder + text encoder
+  concepts_csv: model_weights/mimic_concepts.csv                # ordered 368,294-concept vocabulary
+  concept_embeddings: model_weights/concept_embeddings_368294.pt  # 368,294 x 768 CLEAR text-encoder embeddings
+  # --- outputs ---
+  output_dir: outputs
+  index_dir: outputs/index          # FAISS index + id table + manifest (built by scripts/build_faiss_index.py)
+
+runtime:
+  device: auto            # auto = cuda > mps > cpu.  Or force: cuda | mps | cpu (a forced device that is unavailable raises)
+  seed: 0
+  mps_fallback: true      # let unsupported ops fall back to CPU when running on Apple MPS
+  torch_hub_dir: null     # HPC: point at a pre-populated torch hub cache holding facebookresearch_dinov2_main
+  torch_num_threads: null # null = torch default
+  num_workers: 0          # DataLoader workers for bulk image decoding (index build). Mac: 0. HPC: e.g. 16
+
+dataset:
+  # File names below are relative to paths.mimic_root
+  metadata_csv: mimic-cxr-2.0.0-metadata.csv.gz
+  split_csv: mimic-cxr-2.0.0-split.csv.gz
+  chexpert_csv: mimic-cxr-2.0.0-chexpert.csv.gz
+  negbio_csv: mimic-cxr-2.0.0-negbio.csv.gz
+  # Frontal views only, ORDERED BY PREFERENCE (first = most preferred): PA is chosen over AP.
+  accepted_view_positions: [PA, AP]
+  # v1: exactly one image per study = the most-preferred accepted view; ties -> smallest dicom_id.
+  # Studies with no accepted view (e.g. lateral-only) are excluded. false = keep every accepted-view image.
+  one_image_per_study: true
+  splits: [train, validate, test]     # official MIMIC-CXR splits that the index will expose
+
+input:                    # N01 image loader
+  accepted_extensions: [".jpg", ".jpeg", ".png"]
+  min_image_side: 64      # reject anything smaller than this (px)
+
+clear:                    # N03 / N05 CLEAR encoder
+  local_files_only: false # HPC compute nodes without internet: true (needs the torch hub cache above)
+  precision: fp32         # fp32 ONLY at this stage: the FAISS index and every query use fp32 embeddings (no bf16/mixed precision)
+  embed_dim: 768
+  batch_size: 32
+  hash_checkpoint: false  # record the checkpoint sha256 in ImageEmbedding (slow for 600 MB, set true on HPC)
+
+concept_bank:             # N08 concept bank + N07 similarity
+  expected_n_concepts: 368294
+  expected_dim: 768
+  normalise_embeddings: true
+  mmap_embeddings: true   # memory-map the 1.1 GB .pt file when the torch version supports it
+  hash_files: false       # record sha256 of the csv/embeddings in BankInfo
+  score_batch_size: 64    # images per matmul in batch scoring (B x 368,294 floats per batch)
+
+explore:                  # scripts/explore_concepts.py
+  sample_size: 40
+  top_tokens: 60
+  examples_per_category: 5
+  seed: 0
+
+retrieval:                # N09 FAISS retrieval (scripts/build_faiss_index.py, scripts/run_retrieval_demo.py)
+  # faiss = IndexFlatIP (the design; use on the HPC).  numpy = the SAME exact inner-product search as a plain matmul over the
+  # saved fp32 embeddings, for macOS where pip's torch and faiss-cpu ship clashing OpenMP runtimes and abort when loaded together.
+  backend: numpy
+  corpus_splits: [train]  # ONLY train may be indexed, so validate/test images can never be retrieved
+  index_name: train       # files: <index_dir>/<index_name>.faiss, <name>_ids.json, <name>_manifest.json, <name>_embeddings.npy
+  k: 5                    # neighbours returned per query (tune on the validation split)
+  similarity_floor: null  # drop neighbours below this cosine similarity (null = keep all k); tune on validation
+  exclude_same_patient: true   # drop every index entry of the query's own patient (not just the same image)
+  save_embeddings: true   # also save the fp32 corpus embeddings (.npy) so the index can be rebuilt without re-encoding
+  max_failed_fraction: 0.001   # abort the build if more than this share of images cannot be decoded
+  log_every_batches: 20
+
+demo:                     # scripts/run_demo.py
+  split: train
+  num_images: 5
+  top_k: 20
+
+radlex:                    # offline: build_radlex_snapshot.py.  online: fusion.rules.radlex_client + concepts.tagging
+  raw_owl_path: data/radlex/raw/RadLex.owl     # downloaded once via BioPortal/radlex.org, see docs/pipeline.md 5.4 rev2
+  snapshot_path: model_weights/radlex_snapshot.json.gz
+  version: "4.3"                               # RadLex Term Browser version, for the manifest
+  chest_scope_root_label: thorax               # is-a + part-of union rooted here defines the anatomy gazetteer scope
+  # RadLex classifies some organs by system (e.g. heart -> "cardiovascular system") rather than
+  # by spatial containment, so a pure "thorax" closure misses them (confirmed: heart's part_of
+  # target is the body-wide cardiovascular system, not thorax/mediastinum). Small, hand-curated
+  # supplement roots, same pattern as configs/finding_synonyms.yaml's manual entries -- grow this
+  # list as offline/build_radlex_snapshot.py's coverage report shows other spatially-absent gaps.
+  additional_scope_roots: [heart]
+
+radgraph:                  # N15/N29 shared parser; also used offline for concept tagging (pipeline.md 4.6 rev 3)
+  model_type: modern-radgraph-xl
+  device: auto             # auto = cuda > mps > cpu; RadGraph runs fine on CPU (measured ~40-90 texts/s unbatched on a laptop CPU)
+  batch_size: 64
+  version: modern-radgraph-xl   # recorded in the version manifest; bump if the pinned pip package version changes
+
+tagging:                   # offline: build_concept_bank.py's tagging pass (pipeline.md 4.6 rev 3, steps 1-8)
+  checkpoint_dir: outputs/concept_tagging_checkpoints   # resumable: partial batches are written here as they complete
+  checkpoint_every_batches: 50
+  laterality_gazetteer: [left, right, bilateral, bilaterally, bibasilar, bibasal, midline, lt, rt]
+  # trigger words -> implies_present / implies_absent; anything else with comparison wording -> indeterminate.
+  # See docs/pipeline.md 4.6 GAP-20: proposed, not yet validated on real data.
+  temporal_implies_present: [unchanged, stable, persistent, persisting, remain, remains, remaining,
+    again, redemonstrated, "re-demonstrated", interval increase, increasing, increased, worsening,
+    worsened, progression, progressing, progressive, new, newly, recurrent, recurrence]
+  temporal_implies_absent: [resolved, resolution, cleared, "no longer seen", "no longer visible",
+    "no longer identified", interval decrease, decreasing, decreased, improving, improved, resolving]
+  temporal_indeterminate: ["compared to", "compared with", comparison, since, interval, prior, previous,
+    previously, earlier, recent]
+  negation_cues: ["no", without, "clear of", negative, absent, absence, "free of", "not seen", "not identified"]
+  finding_synonyms_path: configs/finding_synonyms.yaml   # anchors + synonym lists for the canonical finding vocabulary (4.6 step 7)
+  observation_min_frequency: 5   # a normalised RadGraph observation string must appear this many times in the bank to become its own canonical bucket (below this: unmapped)
+
+grouping:                  # N12/N16/N19 -> Evidence B (N21), rev 3. NOT Evidence-A-conditioned.
+  top_k_groups: 20
+  contributing_concepts_per_group: 5
+  present_absent_count_threshold: 0.3   # a concept counts toward present_count/absent_count if its raw score clears this
+  dedup_threshold: 0.95
+
+spatial_enabled: false    # N02 spatial perception is paused -> Evidence A absent

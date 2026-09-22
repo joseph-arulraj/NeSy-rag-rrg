@@ -1,0 +1,44 @@
+# =============================================================================
+# HPC profile (H100).  Overlays configs/default.yaml -- only list what differs.
+# Replace every CHANGE_ME with the real path on the cluster before running.
+# Use:  python scripts/run_demo.py --config configs/hpc.yaml
+# =============================================================================
+
+paths:
+  mimic_root: /CHANGE_ME/mimic-cxr-jpg                 # contains files/ and the *.csv.gz files
+  mimic_reports_zip: null
+  mimic_reports_dir: /CHANGE_ME/mimic-cxr/files        # extracted MIMIC-CXR report .txt tree
+  model_weights_dir: /CHANGE_ME/model_weights
+  clear_checkpoint: /CHANGE_ME/model_weights/best_model.pt
+  concepts_csv: /CHANGE_ME/model_weights/mimic_concepts.csv
+  concept_embeddings: /CHANGE_ME/model_weights/concept_embeddings_368294.pt
+  output_dir: /CHANGE_ME/outputs
+  index_dir: /CHANGE_ME/outputs/index
+
+runtime:
+  device: cuda
+  torch_hub_dir: /CHANGE_ME/torch_hub                  # populate once on a login node: python scripts/cache_dinov2.py --config configs/hpc.yaml
+  num_workers: 16                                      # parallel JPEG decoding for the index build
+
+clear:
+  local_files_only: true                               # compute nodes usually have no internet
+  batch_size: 256                                      # precision stays fp32 (see default.yaml)
+  hash_checkpoint: true
+
+retrieval:
+  backend: faiss                                       # exact IndexFlatIP (Linux: torch + faiss-cpu coexist fine)
+
+concept_bank:
+  hash_files: true
+  score_batch_size: 256
+
+radlex:
+  raw_owl_path: /CHANGE_ME/data/radlex/raw/RadLex.owl
+  snapshot_path: /CHANGE_ME/model_weights/radlex_snapshot.json.gz
+
+radgraph:
+  device: cuda            # optional speedup; CPU also works (see default.yaml note)
+  batch_size: 256
+
+tagging:
+  checkpoint_dir: /CHANGE_ME/outputs/concept_tagging_checkpoints

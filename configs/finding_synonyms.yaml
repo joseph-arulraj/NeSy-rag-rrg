@@ -1,0 +1,98 @@
+# =============================================================================
+# Canonical finding vocabulary anchors (pipeline.md 4.6 step 7 / GAP-6's B-relevant slice).
+#
+# Each top-level key is a canonical finding label. `chexpert: true` marks the 14 anchor
+# labels used for the CBM (Evidence C) and for calibration ground truth. `synonyms` lists
+# normalised RadGraph-observation surface forms (lowercase, singular) that map onto this
+# canonical label -- built by hand from the concept-exploration output and the RadGraph
+# probe in pipeline.md 10.2/GAP-21, NOT auto-clustered (see pipeline.md 4.6 step 7's
+# rationale for preferring a small hand-curated table over automated clustering).
+#
+# This is a starting set, deliberately small. Grow it as offline/build_concept_bank.py's
+# coverage report shows frequent unmapped RadGraph observation strings (see
+# tagging.observation_min_frequency in default.yaml) -- radiologist-reviewable, same
+# pattern as the RadLex anatomy-term mapping in pipeline.md 4.4 item 4.
+# =============================================================================
+
+atelectasis:
+  chexpert: true
+  synonyms: [atelectasis, atelectatic, collapse, subsegmental atelectasis, linear atelectasis]
+
+cardiomegaly:
+  chexpert: true
+  # RadGraph produced NO entity for bare "cardiomegaly" in the pipeline.md 4.6/GAP-21 probe,
+  # and RadLex has no class for it either -- this entry exists specifically to cover that gap.
+  synonyms: [cardiomegaly, "enlarged cardiac silhouette", "enlarged heart", "cardiac enlargement",
+    "borderline cardiomegaly", "mild cardiomegaly", "moderate cardiomegaly", "severe cardiomegaly"]
+
+consolidation:
+  chexpert: true
+  synonyms: [consolidation, consolidative, airspace consolidation, "airspace disease"]
+
+edema:
+  chexpert: true
+  synonyms: [edema, "pulmonary edema", "vascular congestion", congestion, "interstitial edema"]
+
+enlarged_cardiomediastinum:
+  chexpert: true
+  synonyms: ["enlarged cardiomediastinum", "widened mediastinum", "mediastinal widening",
+    "cardiomediastinal enlargement"]
+
+fracture:
+  chexpert: true
+  synonyms: [fracture, fractures, "rib fracture", "compression fracture"]
+
+lung_lesion:
+  chexpert: true
+  synonyms: [lesion, mass, nodule, nodular, "pulmonary nodule", "lung mass"]
+
+lung_opacity:
+  chexpert: true
+  synonyms: [opacity, opacities, opacification, "airspace opacity", infiltrate, infiltrates,
+    "patchy opacity", "hazy opacity"]
+
+no_finding:
+  chexpert: true
+  synonyms: [unremarkable, normal, clear, "within normal limits", "no acute cardiopulmonary process",
+    "no acute abnormality"]
+
+pleural_effusion:
+  chexpert: true
+  synonyms: [effusion, effusions, "pleural effusion", "pleural fluid"]
+
+pleural_other:
+  chexpert: true
+  synonyms: [thickening, "pleural thickening", "pleural plaque", "pleural scarring", fibrosis]
+
+pneumonia:
+  chexpert: true
+  synonyms: [pneumonia, pneumonic]
+
+pneumothorax:
+  chexpert: true
+  synonyms: [pneumothorax, "tension pneumothorax"]
+
+support_devices:
+  chexpert: true
+  synonyms: [tube, catheter, line, lines, pacemaker, "pacer", defibrillator, wire, wires, port,
+    drain, stent, clip, clips, picc, "central line", "chest tube", "endotracheal tube",
+    "nasogastric tube", "et tube", ett, ngt, cvc]
+
+# --- non-CheXpert findings worth their own bucket (common in the 368k bank, per §10's exploration) ---
+
+hyperinflation:
+  chexpert: false
+  synonyms: [hyperinflation, hyperinflated, "hyperexpanded lungs", emphysema, emphysematous]
+
+scoliosis:
+  chexpert: false
+  synonyms: [scoliosis, "spinal curvature"]
+
+hilar_abnormality:
+  chexpert: false
+  synonyms: [hilum, hila, "hilar prominence", "hilar fullness", "hilar enlargement"]
+
+costophrenic_blunting:
+  chexpert: false
+  synonyms: ["costophrenic angle blunting", "blunting of the costophrenic angle",
+    "costophrenic angle", "costophrenic blunting"]

@@ -85,6 +85,24 @@ def _existing_chunks(checkpoint_dir: Path) -> dict[int, Path]:
     return out
 
 
+# (bare_finding, disambiguating_word_in_the_raw_text) -> corrected_finding. Needed because
+# RadGraph typically strips a qualifying modifier ("pericardial") from the Observation entity
+# text before finding_vocab ever sees it, so the vocab-level synonym table alone can't tell
+# "pericardial effusion" (a cardiac finding) from a bare "effusion" (pleural, the common case
+# in the bank). Confirmed necessary against real data: "raising the possibility of pericardial
+# effusion or cardiomyopathy" resolved to pleural_effusion before this guard existed.
+_FINDING_DISAMBIGUATION: dict[str, list[tuple[str, str]]] = {
+    "pleural_effusion": [("pericardial", "pericardial_effusion")],
+}
+
+
+def _disambiguate_finding(canonical_finding: Optional[str], text: str) -> Optional[str]:
+    for cue, corrected in _FINDING_DISAMBIGUATION.get(canonical_finding or "", []):
+        if cue in text.lower():
+            return corrected
+    return canonical_finding
+
+
 def _resolve_anatomy(parse, radlex: RadLexClient) -> Optional[str]:
     """First chest-scope-resolvable Anatomy entity, longest text first (a multi-word entity is
     more specific than a single word)."""
@@ -119,6 +137,7 @@ def tag_one(
         # fallback: try the whole concept text against the synonym table directly (catches
         # e.g. "cardiomegaly" when RadGraph produced no Observation entity at all, GAP-21)
         canonical_finding = vocab.resolve_observation(text)
+    canonical_finding = _disambiguate_finding(canonical_finding, text)
 
     return ConceptTag(
         anatomy=anatomy, laterality=laterality, resolved_polarity=resolved_polarity,

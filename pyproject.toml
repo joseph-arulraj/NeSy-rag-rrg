@@ -12,13 +12,18 @@ dependencies = [
     "numpy>=1.24",
     "pillow>=9.0",
     "pyyaml>=6.0",
+    "requests>=2.28",   # N27 LLM client (rrg.generation.llm_client) -- core dependency, not just radgraph's transitive one
 ]
 # The cloned CLEAR repo is a separate prerequisite (not on PyPI):   pip install -e ./CLEAR
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0"]
 faiss = ["faiss-cpu>=1.7.4"]      # needed when retrieval.backend: faiss (HPC). On macOS pip's torch + faiss-cpu clash: use backend: numpy
-radgraph = ["radgraph>=0.1.18"]  # N15/N29 and offline concept tagging. If install fails with an
+radgraph = ["radgraph>=0.1.18"]  # requests moved to core deps above (also needed by rrg.generation.llm_client);
+# originally added here because radgraph's bundled allennlp shim imports it internally without
+# declaring it as a dependency -- without it, `pip install radgraph` succeeds but
+# `from radgraph import RadGraph` fails with ModuleNotFoundError: requests.
+# If install fails with an
 # AttributeError about TokenizersBackend/encode_plus, pin: pip install "transformers==4.49.0" "tokenizers<0.22"
 # (radgraph vendors an old allennlp shim incompatible with the newest transformers/tokenizers releases)
 

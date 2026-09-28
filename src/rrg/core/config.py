@@ -148,6 +148,22 @@ class DemoConfig:
 
 
 @dataclass
+class LLMConfig:
+    """N27 report generation (pipeline.md §6.1). The API key itself is NEVER read from here --
+    only the name of the environment variable that holds it (api_key_env). Export the variable
+    yourself; it must never appear in a config file or be committed."""
+    provider: str                # "openai_compatible" -- a chat/completions-shaped API
+    base_url: str
+    model: str
+    api_key_env: str
+    system_prompt_version: str
+    temperature: float
+    max_tokens: int
+    timeout_s: float
+    max_retries: int
+
+
+@dataclass
 class Settings:
     paths: PathsConfig
     runtime: RuntimeConfig
@@ -162,6 +178,7 @@ class Settings:
     grouping: GroupingConfig
     explore: ExploreConfig
     demo: DemoConfig
+    llm: LLMConfig
     spatial_enabled: bool
     project_root: Path  # not read from YAML; set by the loader
 
@@ -402,6 +419,14 @@ def _validate(s: Settings) -> None:
         )
     if s.paths.mimic_reports_zip is not None and s.paths.mimic_reports_dir is not None:
         raise ConfigError("set only one of paths.mimic_reports_zip / paths.mimic_reports_dir")
+    if not 0.0 <= s.llm.temperature <= 2.0:
+        raise ConfigError(f"llm.temperature must be in [0, 2], got {s.llm.temperature}")
+    if s.llm.max_tokens <= 0:
+        raise ConfigError("llm.max_tokens must be positive")
+    if s.llm.timeout_s <= 0:
+        raise ConfigError("llm.timeout_s must be positive")
+    if s.llm.max_retries < 0:
+        raise ConfigError("llm.max_retries must be >= 0")
 
 
 def require_file(path: Path, key: str) -> Path:

@@ -113,11 +113,23 @@ tagging:                   # offline: build_concept_bank.py's tagging pass (pipe
   laterality_gazetteer: [left, right, bilateral, bilaterally, bibasilar, bibasal, midline, lt, rt]
   # trigger words -> implies_present / implies_absent; anything else with comparison wording -> indeterminate.
   # See docs/pipeline.md 4.6 GAP-20: proposed, not yet validated on real data.
-  temporal_implies_present: [unchanged, stable, persistent, persisting, remain, remains, remaining,
-    again, redemonstrated, "re-demonstrated", interval increase, increasing, increased, worsening,
-    worsened, progression, progressing, progressive, new, newly, recurrent, recurrence]
-  temporal_implies_absent: [resolved, resolution, cleared, "no longer seen", "no longer visible",
-    "no longer identified", interval decrease, decreasing, decreased, improving, improved, resolving]
+  # Word-boundary EXACT-STRING match, not stemmed -- every inflection actually needed must be
+  # listed explicitly (e.g. "decrease" does not match "decreasing"/"decreased" as separate
+  # tokens). This list was found incomplete against real data (missing exactly "decrease",
+  # "clearing", "progressed") and expanded to cover common CXR-report inflections; still not
+  # guaranteed exhaustive -- see pipeline.md GAP-20, revisit as more gaps surface.
+  temporal_implies_present: [unchanged, stable, persistent, persisting, persists, remain, remains,
+    remaining, again, redemonstrated, "re-demonstrated", interval increase, increase, increasing,
+    increased, worsening, worsened, worse, progression, progressing, progressed, progressive, new,
+    newly, recurrent, recurrence, recurred, recurring]
+  # NOTE: deliberately NOT "clear" (bare) -- that's a stationary normal-finding descriptor
+  # ("lungs are clear"), already handled as a no_finding synonym in finding_synonyms.yaml, and
+  # is a different thing from "clearing"/"cleared" (a finding resolving over time). Conflating
+  # them was tried and reverted -- see the code review that caught it.
+  temporal_implies_absent: [resolved, resolution, resolving, resolves, clearing, cleared,
+    clears, "no longer seen", "no longer visible", "no longer identified", "no longer present",
+    interval decrease, decrease, decreasing, decreased, improving, improved, improves, improvement,
+    smaller, diminished, diminishing]
   temporal_indeterminate: ["compared to", "compared with", comparison, since, interval, prior, previous,
     previously, earlier, recent]
   negation_cues: ["no", without, "clear of", negative, absent, absence, "free of", "not seen", "not identified"]
@@ -129,5 +141,17 @@ grouping:                  # N12/N16/N19 -> Evidence B (N21), rev 3. NOT Evidenc
   contributing_concepts_per_group: 5
   present_absent_count_threshold: 0.3   # a concept counts toward present_count/absent_count if its raw score clears this
   dedup_threshold: 0.95
+
+llm:                        # N27 report generation (pipeline.md §6.1)
+  provider: openai_compatible   # a chat/completions-shaped API -- KCL's hosted endpoint below
+  base_url: https://ai.create.kcl.ac.uk/api/v1/chat/completions
+  model: "arc:nexus"
+  api_key_env: RRG_LLM_API_KEY   # export this yourself: `export RRG_LLM_API_KEY=sk-...` --
+  # the key is NEVER stored in a config file or committed; this is only the env var's NAME
+  system_prompt_version: v1
+  temperature: 0.2          # pipeline.md §6.1: low temperature for the first (only, v1) attempt
+  max_tokens: 1024
+  timeout_s: 60
+  max_retries: 3
 
 spatial_enabled: false    # N02 spatial perception is paused -> Evidence A absent

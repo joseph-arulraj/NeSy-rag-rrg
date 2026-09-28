@@ -53,7 +53,19 @@ def resolve_base_polarity(
     """radgraph_observation_certainty: the certainty string RadGraph attached to this concept's
     (any) Observation entity, e.g. "definitely present" / "definitely absent" / "uncertain", or
     None if RadGraph produced no Observation entity at all for this concept (measured to happen
-    on a meaningful fraction of short concept-bank phrases, GAP-21)."""
+    on a meaningful fraction of short concept-bank phrases, GAP-21).
+
+    The lexical negation regex is checked FIRST and wins whenever it fires, even over a
+    RadGraph "present" certainty. Confirmed necessary, not just cautious: on the terse,
+    verb-less phrase "no definitive pleural effusions", RadGraph tagged the Observation entity
+    "definitely present", missing the leading "no" entirely -- it gets this right on
+    full-sentence phrasing ("no definite pneumothorax IS SEEN") but not reliably on
+    concept-bank-style noun phrases. The regex is simple and near-100%-precision for the same
+    reason the laterality tagger is (pipeline.md 4.4): these cue words are essentially never
+    used non-negatingly in this register. RadGraph's certainty is still authoritative for
+    absent/uncertain calls the regex has no lexical cue for."""
+    if _negation_pattern(negation_cues).search(text):
+        return Polarity.ABSENT
     if radgraph_observation_certainty:
         c = radgraph_observation_certainty.lower()
         if "absent" in c:
@@ -62,7 +74,7 @@ def resolve_base_polarity(
             return Polarity.UNCERTAIN
         if "present" in c:
             return Polarity.PRESENT
-    return tag_base_polarity(text, negation_cues)
+    return Polarity.PRESENT
 
 
 def classify_temporal(

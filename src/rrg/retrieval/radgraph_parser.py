@@ -80,6 +80,17 @@ class RadGraphParser:
         try:
             from radgraph import RadGraph
         except ImportError as exc:
+            missing = getattr(exc, "name", None)
+            if missing and missing != "radgraph":
+                # radgraph's bundled allennlp shim needs packages (e.g. "requests") it does not
+                # declare as its own dependencies, so `pip install radgraph` alone can leave one
+                # missing. The resulting ImportError is easy to misread as "radgraph itself is
+                # not installed" when it prints last -- name the actual missing package instead.
+                raise RadGraphLoadError(
+                    f"'radgraph' is installed but failed to import because it needs {missing!r}, "
+                    f"which isn't one of its declared dependencies. Install it directly: "
+                    f"pip install {missing}"
+                ) from exc
             raise RadGraphLoadError(
                 "cannot import 'radgraph'. Install it: pip install radgraph"
             ) from exc

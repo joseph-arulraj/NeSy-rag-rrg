@@ -18,6 +18,7 @@
 | 1 | **KG recommendation added.** §5.4/§8 now recommend a layered KG: RadLex as the CXR-specific anatomy/finding lexicon, SNOMED CT's finding-site/laterality qualifier model (via UMLS) for the N25 consistency rules, and UMLS as the entity-linking backbone that automates the N12 concept-tagging step above. | User decision, this session |
 | 2 | **KG stack simplified to RadLex-only.** SNOMED CT and UMLS dropped from the v1 plan — not needed at this scale and both carry licensing overhead RadLex doesn't. RadLex (sourced via the BioPortal API/ontology download, no licensing gate) now covers both the N12 auto-tagging lexicon and the N25 rule vocabulary; N25's finding/anatomy/laterality/exclusivity rules are hand-curated directly over the small canonical vocabulary instead of derived from SNOMED's relationship model. SNOMED/UMLS become an optional later enhancement, only if RadLex-only concept-tagging coverage (§4.4's QA sample) proves insufficient. See §5.4. | User decision, this session |
 | 3 | **N12 redesigned: Evidence A removed as a refinement input, permanently — not just deferred.** The original mechanism (down-weight 368k concepts using Evidence A's spatial context, edge `+ Evidence A` into N12) is **superseded**, not merely paused for v1. Reasons: (a) gating B on A's raw output means any error A makes propagates directly into what counts as evidence, with no cross-check on A's own reliability; (b) flat top-K over 368k concepts was independently found to be the wrong mechanism regardless of A — it surfaces whichever finding has the most templated phrasing variants in MIMIC's reporting style (measured: 4 of the top 5 hits for one sample image were near-duplicate device-tube phrasings, §10), not the most likely finding. Replaced by: RadGraph-parse every concept once offline, group by `(canonical_finding, AnatomyID, laterality)`, resolve each concept's temporal/comparison language into a present/absent polarity, and rank **groups** rather than raw phrasings. See the rewritten §4.6. Evidence A, once N02 exists, still reaches fusion independently via the E21a bus (N06→N22) — only its use as an N12 refinement signal is removed. This retires **AMBIG-2** (suppressive-vs-promotive no longer applies — there is no more A-conditioned refinement to be suppressive or promotive about) and adds **GAP-19/20/21** (laterality-in-group-key, the temporal/polarity gazetteer, and RadGraph's compound-sentence behaviour are all new, unvalidated design choices — see §8). | User decision, this session |
+| 4 | **Evidence A's specification extracted to a dedicated document, [`docs/evidenceA.md`](evidenceA.md).** N02/N04/N06's design has grown into its own multi-dataset build project — VinDr-CXR (external, box-labelled pathology, for pretraining), LATTE-CXR (small, MIMIC-native REFLACX-derived radiologist-drawn boxes, for domain fine-tuning *and* the first real spatial-accuracy validation on MIMIC), and CheXmask-U (MIMIC-native anatomy segmentation, for full-scale deployment-time plausibility gating plus a standalone cardiothoracic-ratio cardiomegaly signal) — large enough that embedding it in this file obscured both documents. §4.2 is now a stub pointing to `evidenceA.md`. The v1-deferred status (rev 1) and its cross-cutting consequences (§7.2, §9) are unchanged and still recorded here, since the rest of the pipeline's contracts depend on them regardless of A's internal design. | User decision, this session |
 
 ---
 
@@ -216,60 +217,13 @@ BeliefGraph:
 
 ### 4.2 N02 · `Spatial perception model` → N04 `Region + laterality features` → N06 `Evidence A: Spatial findings`
 
-**Role:** independent localised perception. Answers *what* and *where*, without reference to the CLEAR embedding space. This is the branch that gives the system explicit spatial grounding instead of relying on global image-level similarity.
+**Full specification moved to a dedicated document: [`docs/evidenceA.md`](evidenceA.md).** Evidence A has grown into its own build project — its own model, its own external training data (MIMIC-CXR-JPG itself has no spatial ground truth at all), its own validation problem — large enough that keeping its design embedded in this file made both harder to maintain. This section is now a stub; `evidenceA.md` is the source of truth for N02/N04/N06's detector/derivation spec, data contracts, data strategy, and open decisions (Revision Log rev 4).
 
-**[Rev 1] N02 deferred — build-phase note.** N02 is architecturally independent of every other Stage-1 branch (it is the only module not downstream of N03/CLEAR), so it can be built last without blocking anything else. While deferred:
-- `EvidenceA` is `absent` (not merely empty) for every study — flag `study_meta.spatial_unavailable=true`, distinct from "spatial model ran and found nothing" (§ Failure paths below).
-- **N12 is unaffected by N02's absence** *(rev 3: N12 no longer takes Evidence A as an input at all — see §4.6 and Revision Log rev 3)*. Evidence B is produced by RadGraph-based grouping and temporal/polarity resolution regardless of whether N02 exists; there is no degraded path to specify here any more because the mechanism never depended on Evidence A.
-- **Fusion runs on 3 sources (B+C+D)** instead of 4 — the belief graph loses its only pixel-grounded anatomy/laterality source. Anatomy/laterality attribution for findings falls back to whatever lexical anatomy/laterality the 368k concept text happens to encode (via §4.4's auto-tags) and to RadGraph's anatomy entities from Evidence D / the draft extraction — i.e. attribution becomes *"the vocabulary asserts a location"* rather than *"the model localised it in this image"*. Record this as a known quality limitation of the N02-deferred build, not silently.
-- **Recommendation:** build against the `EvidenceA=absent` contract from day one (§5.2, §5.4 already specify required behaviour for this case) so that adding N02 later is additive and doesn't require touching Stage 2/3 contracts. The **runtime** degraded-mode policy in §7.2 (hard-fail on N02 failure) is a *separate, production-time* statement and does not apply to this planned build-phase absence — see §7.2's rev-1 note.
-
-#### N02 — the detector/localiser
-
-| Aspect | Specification |
-|---|---|
-| Input | `ImageTensor` (spatial branch preprocessing) + invertible resize transform |
-| Output | `list[SpatialDetection]` |
-| Model class | Region-level CXR model — detection, anatomy segmentation, or grounded classification. **Architecture and checkpoint unspecified in the diagram → [GAP-2]** |
-
-```
-SpatialDetection:
-  finding_label: str
-  score: float                    # model-native, NOT calibrated
-  bbox: [x0,y0,x1,y1]             # original-image pixel coords
-  mask: RLE | null
-```
-
-#### N04 — region + laterality derivation
-
-Pure geometric/symbolic post-processing. No learned parameters.
-
-| Step | Specification |
-|---|---|
-| Coordinate restoration | Invert N01's spatial-branch resize/pad to original pixel space |
-| Anatomical assignment | Map each bbox/mask to `AnatomyID` — either via an anatomy segmentation mask (preferred, deterministic overlap rule) or a zone lookup (upper/mid/lower × left/right lung field, cardiac silhouette, mediastinum, costophrenic angles, apices, hila, diaphragm) |
-| Laterality derivation | Derived from anatomy assignment **and** `patient_orientation`. **Must not** be inferred from raw image-x alone: on an AP film the patient's left is image-right, and flipped/mirrored acquisitions exist |
-| Overlap resolution | Deterministic tie-break when a box straddles regions — e.g. assign to max-IoU region; emit `bilateral` only above a configured bilateral-overlap ratio |
-
-**Output → N06 `Evidence A: Spatial findings`:**
-```
-EvidenceA = list[{
-  label: str, anatomy: AnatomyID, laterality: Laterality,
-  score: float, bbox: [...], area_frac: float
-}]
-```
-
-**Downstream consumers:** N22 (fusion, via E21a) **and** N12 (concept refinement, via E21b, labelled `+ Evidence A`).
-
-**Failure paths:**
-| Condition | Behaviour |
-|---|---|
-| Zero detections | Emit empty `EvidenceA`; **do not** treat as failure — a normal CXR legitimately yields none. Must be distinguishable from "module errored" |
-| Anatomy mapping fails for a detection | Emit with `anatomy=null`, `laterality=unspecified`; must not be silently dropped |
-| `patient_orientation` missing | Fall back to `view_position`; if both missing, emit `laterality=unspecified` and flag `study_meta.laterality_unreliable=true`. Never guess |
-| Model timeout/OOM | Degraded mode — see §7.2 |
-
-**Configuration:** `spatial.checkpoint`, `spatial.score_threshold`, `spatial.nms_iou`, `spatial.max_detections`, `spatial.anatomy_atlas_version`, `spatial.bilateral_overlap_ratio`.
+**What stays true here, because the rest of this document's contracts depend on it regardless of A's internal design:**
+- **[Rev 1] N02 is deferred for the v1 base build**, not failed. `EvidenceA` is `absent` (not merely empty) for every study until N02 exists — flag `study_meta.spatial_unavailable=true`, distinct from "spatial model ran and found nothing". See §7.2 for the full degraded-mode contract and §9 for build order.
+- **N12/N19 (Evidence B's grouping) does not depend on N02 at all, in either direction, by design (rev 3)** — see §4.6. There is no partial/degraded coupling between A and B left to reason about; Evidence B's mechanism never depended on Evidence A existing.
+- **Fusion (§5.2) runs on 3 sources (B+C+D)** while A is absent, and is designed to accept A as a 4th source additively once it exists — adding N02 later should not require touching Stage 2/3 contracts (§5.2, §5.4 already specify the required `EvidenceA=absent` behaviour).
+- **[GAP-2]** (spatial perception model architecture/checkpoint) is retained in §8's catalog only as a pointer — its actual status and sub-decisions are tracked in `evidenceA.md`, not here.
 
 ---
 
@@ -766,6 +720,8 @@ The `degradations`, `omitted_findings`, and `model_versions` fields are required
 
 ### 7.2 Degraded-mode policy
 
+*N02's own design lives in [`docs/evidenceA.md`](evidenceA.md); the rows below are this pipeline's operational contract for when it's absent or fails, which is unaffected by A's internal design.*
+
 | Failed component | Policy |
 |---|---|
 | N02 spatial (runtime failure, N02 exists and errors) | Evidence A empty; flag `degraded: no_spatial`; fusion runs on 3 sources. *(Rev 3: N12/Evidence B is unaffected either way — it no longer depends on A. The "more than half the architecture's premise" concern from rev 1 is reduced accordingly, though A's own independent evidence stream to fusion is still lost.)* |
@@ -821,7 +777,7 @@ Ordered by blocking impact.
 | **GAP-6** | No canonical finding vocabulary and no source→canonical mapping tables; N22, N24, N29, N30 all require them | Define the canonical vocabulary and the four mappings |
 | **GAP-1** | CBM pathology label space undefined | Fix the label set and its mapping into the canonical vocabulary |
 | **GAP-3** | CLEAR model/checkpoint unidentified — root dependency of B, C, D | Pin model, checkpoint, embedding dim, normalisation convention |
-| **GAP-2** | Spatial perception model architecture/checkpoint unspecified | **Not blocking v1** (N02 is deliberately deferred — Revision Log rev 1, §4.2, §7.2) — but still needs an eventual choice of detector vs. segmentation vs. grounded classifier, and a fixed anatomy atlas, before Phase-1.5 adds spatial perception back in |
+| **GAP-2** | Spatial perception model architecture/checkpoint unspecified | **Not blocking v1** (N02 is deliberately deferred — Revision Log rev 1, §4.2, §7.2). **Full data/training/validation strategy now specified in [`docs/evidenceA.md`](evidenceA.md)** (Revision Log rev 4) — this row is retained here only as a pointer; track GAP-2's actual status and sub-decisions there, not here |
 
 ### Significant — affect correctness and the operating point
 
@@ -867,7 +823,7 @@ Derived from the dependency graph in §7.1; each step is independently testable.
 5. **Stage 2** — normalisation, calibration, fusion, initial graph, rule check, running on 3 sources (B+C+D) while N02 is deferred. Validate on the normal-study case (GAP-13) before anything else.
 6. **Stage 3 (v1: single pass, rev 1)** — generation, extraction, filtering, assembly. Build **N30 before N27**: the filter can be tested against hand-written good and deliberately corrupted drafts, and it defines the target the generator must hit.
 7. **Evaluation harness** (GAP-16), with claim-removal rate and `MISSING_FINDING` (omission) rate as the headline v1 metrics (§7.4) — the omission rate is what justifies building Phase 2.
-8. **Phase 2 (later)** — build N02 (spatial perception, GAP-2) and flip Evidence A back on; build the regeneration loop (§6.5) to remediate `MISSING_FINDING` (GAP-18).
+8. **Phase 2 (later)** — build N02 (spatial perception, GAP-2 — **full plan in [`docs/evidenceA.md`](evidenceA.md)**) and flip Evidence A back on; build the regeneration loop (§6.5) to remediate `MISSING_FINDING` (GAP-18).
 
 
 ---

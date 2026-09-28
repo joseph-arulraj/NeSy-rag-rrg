@@ -58,7 +58,19 @@ no_finding:
 
 pleural_effusion:
   chexpert: true
+  # Bare "effusion"/"effusions" are kept as synonyms because RadGraph typically strips a
+  # qualifying word like "pericardial" before this table ever sees the observation text (it
+  # extracts "effusion" as its own entity, dropping the modifier) -- so a text-level exclusion
+  # guard for "pericardial" is applied separately in offline/build_concept_bank.py's tag_one(),
+  # not here. Confirmed necessary: "raising the possibility of pericardial effusion or
+  # cardiomyopathy" was mapped to pleural_effusion before that guard existed.
   synonyms: [effusion, effusions, "pleural effusion", "pleural fluid"]
+
+pericardial_effusion:
+  chexpert: false
+  # NOT bare "pericardial" -- that would also catch "pericardial fat pad", "pericardial
+  # calcification", etc. Same mistake pattern as the "clear" one above; caught the same way.
+  synonyms: ["pericardial effusion"]
 
 pleural_other:
   chexpert: true

@@ -64,3 +64,16 @@ class IndexVersionMismatchError(PipelineError):
     """The FAISS index was not built with the encoder / precision / dimension now in use."""
 
     code = "E_INDEX_VERSION"
+
+
+class LLMUnavailableError(PipelineError):
+    """N27: the LLM API could not be reached, or every retry was exhausted (pipeline.md §6.1)."""
+
+    code = "E_LLM_UNAVAILABLE"
+
+
+class LLMMalformedOutputError(PipelineError):
+    """N27: the LLM returned an empty or structurally invalid response (pipeline.md §6.1). Not
+    retried -- v1 has no regeneration path to recover into (pipeline.md rev 1)."""
+
+    code = "E_LLM_MALFORMED"

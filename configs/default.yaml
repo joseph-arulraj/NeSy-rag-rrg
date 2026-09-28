@@ -142,6 +142,44 @@ grouping:                  # N12/N16/N19 -> Evidence B (N21), rev 3. NOT Evidenc
   present_absent_count_threshold: 0.3   # a concept counts toward present_count/absent_count if its raw score clears this
   dedup_threshold: 0.95
 
+cbm:                        # N13/N14/N17 -> Evidence C (pipeline.md §4.7)
+  concepts_path: model_weights/cbm_concepts.md
+  concept_ids_cache: model_weights/cbm_concept_ids.json
+  head_checkpoint: model_weights/cbm_head.pt
+  label_space: [atelectasis, cardiomegaly, consolidation, edema, enlarged_cardiomediastinum,
+    fracture, lung_lesion, lung_opacity, no_finding, pleural_effusion, pleural_other,
+    pneumonia, pneumothorax, support_devices]   # the 14 CheXpert labels, pipeline.md GAP-1
+  train_epochs: 200
+  train_lr: 0.01
+  train_weight_decay: 0.0001
+  train_batch_size: 64
+  positive_class_weight: balanced   # mirrors the old project's probe; isotonic calibration (below) corrects the resulting distortion
+
+report_facts:                # shared RadGraph report-text fact extraction (N15's aggregation half + calibration ground truth)
+  sentence_split_regex: '(?<=[.;\n])\s+'
+  cache_dir: outputs/report_facts
+
+evidence_d:                  # N18 aggregation on top of retrieval.* (pipeline.md §4.8)
+  min_support: 1             # a fact needs at least this many supporting neighbours to count at all
+  absent_weight: 0.3         # asymmetric: an "absent" neighbour vote counts for less than a "present" one -- same reasoning as fusion.absent_weight_b
+
+calibration:                 # isotonic calibration of B and C against report-derived ground truth (pipeline.md §10.2)
+  min_samples_per_finding: 20   # below this, fall back to base-rate prior rather than fit an unreliable calibrator
+  isotonic_cache: outputs/calibrators.pkl
+  threshold_cache: outputs/thresholds.json
+  tau_default_hi: 0.7        # fallback admission threshold when a finding has too little validation data for its own
+  tau_default_lo: 0.3
+
+fusion:                      # N23 (pipeline.md §5.2) -- see FusionConfig's docstring for why B/C/D play these specific roles
+  w_b_delta_when_c_prior: 0.5   # B's discounted weight when C already supplies the prior -- placeholder, not yet fit
+  w_d_delta: 1.0                # D's weight as an asymmetric delta -- placeholder, not yet fit
+  absent_weight_b: 0.3          # same asymmetric reasoning as evidence_d.absent_weight
+  admission_threshold: 0.5      # pipeline.md §5.3
+
+rules:                       # N25 (pipeline.md §5.4)
+  rules_path: configs/n25_rules.yaml
+  max_cascade_iterations: 5
+
 llm:                        # N27 report generation (pipeline.md §6.1)
   provider: openai_compatible   # a chat/completions-shaped API -- KCL's hosted endpoint below
   base_url: https://ai.create.kcl.ac.uk/api/v1/chat/completions

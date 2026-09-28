@@ -77,3 +77,23 @@ class LLMMalformedOutputError(PipelineError):
     retried -- v1 has no regeneration path to recover into (pipeline.md rev 1)."""
 
     code = "E_LLM_MALFORMED"
+
+
+class CBMIndexError(PipelineError):
+    """N13/N17: a CBM concept index is out of range for the current bank, or the head/bank
+    version don't match (pipeline.md §4.7)."""
+
+    code = "E_CBM_INDEX"
+
+
+class RuleEngineCascadeError(PipelineError):
+    """N25: rule application did not converge within rules.max_cascade_iterations
+    (pipeline.md §5.4's "bounded" requirement)."""
+
+    code = "E_RULE_CASCADE"
+
+
+class NoEvidenceError(PipelineError):
+    """N23: every evidence source was missing/empty for a study (pipeline.md §5.2)."""
+
+    code = "E_NO_EVIDENCE"

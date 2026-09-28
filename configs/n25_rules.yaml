@@ -1,0 +1,26 @@
+# N25 hand-curated medical rule tables (pipeline.md §5.4). Radiologist-reviewable; grow as gaps
+# surface, same pattern as configs/finding_synonyms.yaml. See src/rrg/fusion/rules/rule_engine.py
+# KNOWN_GAPS for the rule categories NOT yet implemented (hierarchy/subsumption, device/context
+# plausibility, RadLex-based anatomical validity).
+
+# Attribute validity: which findings may NOT legitimately carry a left/right laterality
+# attribute -- whole-organ / midline finding classes. Findings not listed default to
+# lateralizable (the common case for CXR findings); list only the exceptions.
+non_lateralizable_findings:
+  - cardiomegaly
+  - enlarged_cardiomediastinum
+  - no_finding
+  - hyperinflation
+  - scoliosis
+
+# Mutual exclusivity: no_finding co-asserted with any other PRESENT, admitted finding in the same
+# study is a direct contradiction -- keep the higher-confidence side, suppress the other.
+mutual_exclusive_with_no_finding: true
+
+# Laterality cross-node consistency: minimum confidence margin between two same-(finding,anatomy)
+# nodes asserting opposite specific lateralities (left vs right -- bilateral/unspecified/midline
+# are not subject to this check) before one is trusted outright over the other. Below this
+# margin, neither side is trusted; both are suppressed and replaced with one honest
+# laterality=unspecified node. Not yet fit against real data -- see EA-GAP-10-style caveat: a
+# placeholder, not a validated number.
+laterality_margin_threshold: 0.1

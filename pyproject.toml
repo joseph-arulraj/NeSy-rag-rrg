@@ -13,6 +13,7 @@ dependencies = [
     "pillow>=9.0",
     "pyyaml>=6.0",
     "requests>=2.28",   # N27 LLM client (rrg.generation.llm_client) -- core dependency, not just radgraph's transitive one
+    "scikit-learn>=1.3",  # fusion.calibrate's isotonic regression (sklearn.isotonic.IsotonicRegression)
 ]
 # The cloned CLEAR repo is a separate prerequisite (not on PyPI):   pip install -e ./CLEAR
 

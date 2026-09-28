@@ -1,0 +1,75 @@
+# =============================================================================
+# Data and large/licensed assets that must never be committed
+# =============================================================================
+# MIMIC-CXR (images, reports, CheXpert/NegBio/split/metadata csvs) is under the PhysioNet
+# credentialed-data use agreement: never push any of it, including the local dev sample.
+data/
+
+# CLEAR checkpoint, concept bank (mined from MIMIC report text), RadLex snapshot, RadGraph
+# tag sidecars -- all large and/or derived from licensed/credentialed data.
+model_weights/
+
+# Generated artifacts: exploration reports, demo output, FAISS indices, tagging checkpoints.
+outputs/
+
+# RadLex raw downloads (RSNA RadLex License v2.1 -- redistribution has conditions, keep the
+# raw ontology out of git regardless of which directory it's downloaded into).
+Radlex.csv
+PunRadLex_Owl*.zip
+RadLex.owl
+PunRadLex*.owl
+
+# =============================================================================
+# External / separately-installed repos
+# =============================================================================
+# The cloned CLEAR repo (github.com/peterhan91/CLEAR) is its own project with its own git
+# history. It is a build-time dependency, not code of this project: clone it and
+# `pip install -e ./CLEAR` into your conda env on each machine (Mac and HPC both) --
+# see README.md. Do not commit it here.
+CLEAR/
+
+# =============================================================================
+# Project writing (drafts, related-work PDFs) -- not code, and the PDFs are third-party
+# copyrighted papers that must not be pushed to any remote.
+# =============================================================================
+Report/
+
+# =============================================================================
+# Secrets / local config
+# =============================================================================
+# Stage 3 (N27 LLM generation) will need provider credentials; ignore every plausible spelling
+# now so a key never lands in git by accident later.
+.env
+.env.*
+*.env
+secrets.yaml
+secrets.yml
+**/secrets/
+
+# =============================================================================
+# Python / tooling
+# =============================================================================
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+
+# =============================================================================
+# Editor / OS
+# =============================================================================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+*.swp

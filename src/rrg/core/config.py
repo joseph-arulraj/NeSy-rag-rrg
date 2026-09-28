@@ -148,6 +148,77 @@ class DemoConfig:
 
 
 @dataclass
+class CBMConfig:
+    """N13/N14/N17 -> Evidence C (pipeline.md §4.7). The 67-concept list (one short of CLEAR's
+    original 68 -- see model_weights/cbm_concepts.md) is resolved to concept_ids into the 368k
+    bank once and cached; the CBM head is trained on MIMIC's own official chexpert_csv labels."""
+    concepts_path: Path            # model_weights/cbm_concepts.md -- the 67 predefined concept texts
+    concept_ids_cache: Path        # resolved [concept_id, ...] cached here after first resolution
+    head_checkpoint: Path          # trained linear head weights (.pt)
+    label_space: list[str]         # canonical finding labels, CBM output order (the 14 CheXpert labels)
+    train_epochs: int
+    train_lr: float
+    train_weight_decay: float
+    train_batch_size: int
+    positive_class_weight: str     # "balanced" | "none" -- distorts raw P(present) same as the old
+    # project's probe did; corrected later by isotonic calibration (fusion.calibrate), not here.
+
+
+@dataclass
+class ReportFactsConfig:
+    """Shared RadGraph-based report-text fact extraction (docs/pipeline.md §4.8 N15's aggregation
+    half, and the calibration ground-truth labels both reuse this). Reports are split into
+    sentences and each sentence is RadGraph-parsed independently -- RadGraphEntity carries no
+    usable char_span (retrieval/radgraph_parser.py), so sentence-level parsing is how entities
+    stay attributable to the right local negation/laterality/temporal context, at the cost of
+    losing cross-sentence relations. A documented scoping choice, not an oversight."""
+    sentence_split_regex: str
+    cache_dir: Path                # per-split cache of extracted report facts, keyed by study_id
+
+
+@dataclass
+class EvidenceDConfig:
+    """N18 (pipeline.md §4.8). Retrieval itself is configured by `retrieval.*`; this section is
+    the aggregation-specific tuning on top of the k neighbours' extracted report facts."""
+    min_support: int               # pipeline.md AMBIG-4: minimum neighbour count before a fact counts at all
+    absent_weight: float           # asymmetric weighting: an "absent" vote counts for less than a "present" one
+
+
+@dataclass
+class CalibrationConfig:
+    """Ground-truth labels for calibrating B and C: derived from RadGraph-parsed REPORT text
+    (via ReportFactsConfig), on the VALIDATION split only (train would be optimistic) --
+    pipeline.md §10.2's open calibration-data question, now resolved by construction."""
+    min_samples_per_finding: int   # isotonic regression needs this many (score,label) pairs; below it, fall back to base rate
+    isotonic_cache: Path           # fitted calibrators cached here, one per (source, finding)
+    threshold_cache: Path          # fitted tau_hi/tau_lo per finding (pipeline.md §5.3 admission banding)
+    tau_default_hi: float          # fallback when a finding has too little validation data to fit its own threshold
+    tau_default_lo: float
+
+
+@dataclass
+class FusionConfig:
+    """N23 (pipeline.md §5.2). C is the prior wherever it has coverage (its 14 labels, supervised,
+    most refined); calibrated B is the prior everywhere else. Where both cover the same finding,
+    B contributes a discounted delta instead of a second independent prior -- C's 67 input
+    concepts are a strict subset of B's own raw scores, so summing both as independent log-odds
+    terms would double-count the same visual signal (this is also why pipeline.md rejected
+    noisy-OR pooling, see §10.2). D is always an asymmetric delta -- corroborative evidence about
+    OTHER patients' images, never an independent absolute probability for THIS image."""
+    w_b_delta_when_c_prior: float  # B's discounted weight when C already supplies the prior for a finding
+    w_d_delta: float               # D's weight as an asymmetric delta
+    absent_weight_b: float         # asymmetric present/absent weighting for B's delta contribution
+    admission_threshold: float     # pipeline.md §5.3: findings below this are excluded from the initial graph
+
+
+@dataclass
+class RulesConfig:
+    """N25 (pipeline.md §5.4)."""
+    rules_path: Path               # configs/n25_rules.yaml -- hand-curated valid-laterality / exclusivity / device tables
+    max_cascade_iterations: int    # bounded cascading rule application (pipeline.md §5.4 "bounded" requirement)
+
+
+@dataclass
 class LLMConfig:
     """N27 report generation (pipeline.md §6.1). The API key itself is NEVER read from here --
     only the name of the environment variable that holds it (api_key_env). Export the variable
@@ -178,6 +249,12 @@ class Settings:
     grouping: GroupingConfig
     explore: ExploreConfig
     demo: DemoConfig
+    cbm: CBMConfig
+    report_facts: ReportFactsConfig
+    evidence_d: EvidenceDConfig
+    calibration: CalibrationConfig
+    fusion: FusionConfig
+    rules: RulesConfig
     llm: LLMConfig
     spatial_enabled: bool
     project_root: Path  # not read from YAML; set by the loader
@@ -427,6 +504,26 @@ def _validate(s: Settings) -> None:
         raise ConfigError("llm.timeout_s must be positive")
     if s.llm.max_retries < 0:
         raise ConfigError("llm.max_retries must be >= 0")
+    if not s.cbm.label_space or len(set(s.cbm.label_space)) != len(s.cbm.label_space):
+        raise ConfigError("cbm.label_space must be a non-empty list without duplicates")
+    if s.cbm.train_epochs <= 0 or s.cbm.train_batch_size <= 0:
+        raise ConfigError("cbm.train_epochs and cbm.train_batch_size must be positive")
+    if s.cbm.positive_class_weight not in {"balanced", "none"}:
+        raise ConfigError(f"cbm.positive_class_weight must be balanced|none, got {s.cbm.positive_class_weight!r}")
+    if s.evidence_d.min_support < 0:
+        raise ConfigError("evidence_d.min_support must be >= 0")
+    if not 0.0 <= s.evidence_d.absent_weight <= 1.0:
+        raise ConfigError("evidence_d.absent_weight must be in [0, 1] (asymmetric discount on the absent side)")
+    if s.calibration.min_samples_per_finding <= 0:
+        raise ConfigError("calibration.min_samples_per_finding must be positive")
+    if not 0.0 <= s.calibration.tau_default_lo <= s.calibration.tau_default_hi <= 1.0:
+        raise ConfigError("calibration.tau_default_lo must be <= tau_default_hi, both in [0, 1]")
+    if not 0.0 <= s.fusion.absent_weight_b <= 1.0:
+        raise ConfigError("fusion.absent_weight_b must be in [0, 1]")
+    if not 0.0 <= s.fusion.admission_threshold <= 1.0:
+        raise ConfigError("fusion.admission_threshold must be in [0, 1]")
+    if s.rules.max_cascade_iterations <= 0:
+        raise ConfigError("rules.max_cascade_iterations must be positive")
 
 
 def require_file(path: Path, key: str) -> Path:

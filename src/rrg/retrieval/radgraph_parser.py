@@ -81,9 +81,16 @@ class RadGraphParser:
     model_cache_dir=None, tokenizer_cache_dir=None, **kwargs)`) -- confirmed as a real gap that
     every prior call site (concept tagging, calibration, the full pipeline) left unset, so
     `radgraph.device`/`radgraph.batch_size` in config were silently ignored and RadGraph always
-    ran on whichever device the package itself defaults to when `cuda=None`. This affects
-    THROUGHPUT only, not correctness -- any tags/facts already produced under the unwired
-    version remain valid, just possibly slower than necessary."""
+    ran on whichever device the package itself defaults to. This affects THROUGHPUT only, not
+    correctness -- any tags/facts already produced under the unwired version remain valid, just
+    possibly slower than necessary.
+
+    `cuda` is NOT a boolean (confirmed by the package's own source after an initial wrong guess
+    crashed with `Invalid device string: 'cuda:True'`) -- it's a GPU device INDEX, used internally
+    as `torch.device(f"cuda:{cuda}" if cuda != -1 else "cpu")`. So -1 means CPU, and 0 means the
+    first GPU; there is no built-in "auto" in the package itself, so "auto" is resolved here by
+    checking `torch.cuda.is_available()` ourselves, the same way `core/runtime.resolve_device`
+    does for everything else in this project."""
 
     def __init__(self, model_type: str = "modern-radgraph-xl", device: Optional[str] = None, batch_size: int = 1):
         try:
@@ -106,12 +113,15 @@ class RadGraphParser:
         try:
             kwargs: dict[str, Any] = {"model_type": model_type, "batch_size": batch_size}
             if device is not None:
-                # radgraph's own param is a CUDA-specific tri-state (None = library's own default
-                # detection, True = force GPU, False = force CPU) -- "auto" maps to None rather
-                # than guessing True, so we defer to the same default the package would use
-                # un-configured; "mps" has no equivalent here (the param is CUDA-only), so it
-                # falls back to CPU rather than silently doing nothing.
-                kwargs["cuda"] = {"cuda": True, "cpu": False, "auto": None}.get(device, False)
+                if device == "cuda":
+                    kwargs["cuda"] = 0
+                elif device == "auto":
+                    import torch
+                    kwargs["cuda"] = 0 if torch.cuda.is_available() else -1
+                else:
+                    # "cpu", or "mps" -- radgraph's own param is a CUDA device index with no MPS
+                    # equivalent, so anything that isn't "cuda"/"auto" falls back to CPU (-1).
+                    kwargs["cuda"] = -1
             self._model = RadGraph(**kwargs)
         except Exception as exc:  # noqa: BLE001 -- surface any load/download failure with context
             raise RadGraphLoadError(f"RadGraph failed to load (model_type={model_type!r}): {exc}") from exc

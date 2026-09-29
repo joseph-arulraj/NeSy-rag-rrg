@@ -70,7 +70,7 @@ def main() -> None:
         s.radlex.snapshot_path, s.radlex.chest_scope_root_label, s.radlex.version, tuple(s.radlex.additional_scope_roots)
     )
     vocab = load_finding_vocabulary(s.tagging.finding_synonyms_path)
-    radgraph = RadGraphParser(model_type=s.radgraph.model_type)
+    radgraph = RadGraphParser(model_type=s.radgraph.model_type, device=s.radgraph.device, batch_size=s.radgraph.batch_size)
     reports = ReportStore.from_settings(s)
     encoder = ClearEncoder(s, device)
 

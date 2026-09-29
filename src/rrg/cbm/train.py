@@ -26,7 +26,7 @@ from ..core.runtime import configure_runtime
 from ..core.types import Polarity
 from ..datasets.chexpert_labels import ChexpertLabels, load_chexpert_labels
 from ..datasets.mimic_cxr import MimicCxrIndex
-from ..ingest.image_loader import load_record_image
+from ..ingest.bulk_encode import encode_records
 from ..perception.clear_encoder import ClearEncoder
 
 
@@ -72,22 +72,31 @@ def train_cbm(settings: Settings, log: Callable[[str], None] = print, limit: "in
         records = records[:limit]
     if not records:
         raise ValueError("no train-split studies found -- check paths.mimic_root / dataset.splits")
+
+    # Parallel image decode (runtime.num_workers DataLoader workers) + GPU encode -- NOT a
+    # per-image serial loop; see ingest/bulk_encode.py's docstring for why that distinction
+    # matters (a serial loop leaves the GPU idle waiting on single-threaded JPEG decoding).
+    encoder = ClearEncoder(s, device)
+    embeddings, failed = encode_records(records, s, encoder, log)
+    if failed:
+        failed_set = set(failed)
+        log(f"WARNING: {len(failed)} image(s) could not be decoded and were excluded: {failed[:5]}...")
+        keep_idx = [i for i, r in enumerate(records) if r.dicom_id not in failed_set]
+        records = [records[i] for i in keep_idx]
+        embeddings = embeddings[keep_idx]
+
     labels = load_chexpert_labels(s)
     y, mask = _build_label_matrix(records, labels, s.cbm.label_space)
     log(f"{len(records)} train studies; per-label known counts: "
         + ", ".join(f"{s.cbm.label_space[j]}={int(mask[:, j].sum())}" for j in range(len(s.cbm.label_space))))
 
-    encoder = ClearEncoder(s, device)
-    bs = s.clear.batch_size
+    # Concept scoring is a GPU matmul against already-encoded embeddings -- no image I/O left,
+    # so a plain batched loop here (unlike the encoding step above) is not a bottleneck.
+    score_bs = s.concept_bank.score_batch_size
     feats_n = np.empty((len(records), len(concept_ids)), dtype=np.float32)
-    for start in range(0, len(records), bs):
-        batch = records[start:start + bs]
-        decoded = [load_record_image(r, s)[0] for r in batch]
-        feats = encoder.encode_batch(decoded)
-        scores = score_concepts_batch(feats, bank, device, s.concept_bank.score_batch_size)
-        feats_n[start:start + len(batch)] = scores[:, concept_ids]
-        if (start // bs) % 10 == 0:
-            log(f"  encoded {start + len(batch):,}/{len(records):,}")
+    for start in range(0, len(records), score_bs):
+        scores = score_concepts_batch(embeddings[start:start + score_bs], bank, device, score_bs)
+        feats_n[start:start + scores.shape[0]] = scores[:, concept_ids]
 
     X = torch.from_numpy(feats_n)
     Y = torch.from_numpy(y)

@@ -74,9 +74,18 @@ def _to_parse(text: str, raw: dict) -> RadGraphParse:
 
 
 class RadGraphParser:
-    """Loaded once; `radgraph.RadGraph` itself is expensive to construct (loads the model)."""
+    """Loaded once; `radgraph.RadGraph` itself is expensive to construct (loads the model).
 
-    def __init__(self, model_type: str = "modern-radgraph-xl", device: Optional[str] = None):
+    `device`/`batch_size` map onto the real `radgraph.RadGraph.__init__` signature (verified
+    directly, not assumed: `(self, batch_size=1, cuda=None, model_type=None, temp_dir=None,
+    model_cache_dir=None, tokenizer_cache_dir=None, **kwargs)`) -- confirmed as a real gap that
+    every prior call site (concept tagging, calibration, the full pipeline) left unset, so
+    `radgraph.device`/`radgraph.batch_size` in config were silently ignored and RadGraph always
+    ran on whichever device the package itself defaults to when `cuda=None`. This affects
+    THROUGHPUT only, not correctness -- any tags/facts already produced under the unwired
+    version remain valid, just possibly slower than necessary."""
+
+    def __init__(self, model_type: str = "modern-radgraph-xl", device: Optional[str] = None, batch_size: int = 1):
         try:
             from radgraph import RadGraph
         except ImportError as exc:
@@ -95,11 +104,20 @@ class RadGraphParser:
                 "cannot import 'radgraph'. Install it: pip install radgraph"
             ) from exc
         try:
-            kwargs: dict[str, Any] = {"model_type": model_type}
+            kwargs: dict[str, Any] = {"model_type": model_type, "batch_size": batch_size}
+            if device is not None:
+                # radgraph's own param is a CUDA-specific tri-state (None = library's own default
+                # detection, True = force GPU, False = force CPU) -- "auto" maps to None rather
+                # than guessing True, so we defer to the same default the package would use
+                # un-configured; "mps" has no equivalent here (the param is CUDA-only), so it
+                # falls back to CPU rather than silently doing nothing.
+                kwargs["cuda"] = {"cuda": True, "cpu": False, "auto": None}.get(device, False)
             self._model = RadGraph(**kwargs)
         except Exception as exc:  # noqa: BLE001 -- surface any load/download failure with context
             raise RadGraphLoadError(f"RadGraph failed to load (model_type={model_type!r}): {exc}") from exc
         self.model_type = model_type
+        self.device = device
+        self.batch_size = batch_size
 
     def parse(self, text: str) -> RadGraphParse:
         return self.parse_batch([text])[0]

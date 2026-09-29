@@ -218,7 +218,7 @@ def main(settings: Settings, limit: Optional[int] = None, log: Callable[[str], N
         settings.radlex.version, tuple(settings.radlex.additional_scope_roots),
     )
     vocab = load_finding_vocabulary(settings.tagging.finding_synonyms_path)
-    radgraph = RadGraphParser(model_type=settings.radgraph.model_type)
+    radgraph = RadGraphParser(model_type=settings.radgraph.model_type, device=settings.radgraph.device, batch_size=settings.radgraph.batch_size)
 
     checkpoint_dir = settings.tagging.checkpoint_dir / ("smoke" if limit is not None else "full")
     tags, report = tag_concept_bank(texts, radgraph, radlex, vocab, settings, checkpoint_dir, log=log)

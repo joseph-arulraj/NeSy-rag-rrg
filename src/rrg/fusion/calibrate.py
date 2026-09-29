@@ -32,7 +32,7 @@ from ..core.types import Polarity
 from ..datasets.mimic_cxr import MimicCxrIndex
 from ..datasets.reports import ReportStore
 from .rules.radlex_client import RadLexClient
-from ..ingest.image_loader import load_record_image
+from ..ingest.bulk_encode import encode_records
 from ..perception.clear_encoder import ClearEncoder
 from ..reports.report_facts import get_or_extract_facts
 from ..retrieval.radgraph_parser import RadGraphParser
@@ -147,7 +147,7 @@ def run_calibration(settings: Settings, log: Callable[[str], None] = print, limi
     radlex = RadLexClient.load(s.radlex.snapshot_path, s.radlex.chest_scope_root_label, s.radlex.version,
                                 tuple(s.radlex.additional_scope_roots))
     vocab = load_finding_vocabulary(s.tagging.finding_synonyms_path)
-    radgraph = RadGraphParser(model_type=s.radgraph.model_type)
+    radgraph = RadGraphParser(model_type=s.radgraph.model_type, device=s.radgraph.device, batch_size=s.radgraph.batch_size)
     reports = ReportStore.from_settings(s)
     encoder = ClearEncoder(s, device)
 
@@ -163,14 +163,25 @@ def run_calibration(settings: Settings, log: Callable[[str], None] = print, limi
         raise ValueError("no validate-split studies found -- check paths.mimic_root / dataset.splits")
     log(f"calibrating on {len(records)} validation studies")
 
+    # Parallel image decode + GPU encode for ALL studies up front -- NOT a per-study serial
+    # decode inside the loop below (see ingest/bulk_encode.py's docstring: a serial loop leaves
+    # the GPU idle waiting on single-threaded JPEG decoding, confirmed directly on HPC). The
+    # per-study loop below only does report-text RadGraph parsing and GPU-matmul scoring against
+    # the already-encoded embeddings -- no further image I/O.
+    embeddings, failed = encode_records(records, s, encoder, log)
+    if failed:
+        failed_set = set(failed)
+        log(f"WARNING: {len(failed)} image(s) could not be decoded and were excluded: {failed[:5]}...")
+        keep_idx = [i for i, r in enumerate(records) if r.dicom_id not in failed_set]
+        records = [records[i] for i in keep_idx]
+        embeddings = embeddings[keep_idx]
+
     # (source, finding) -> parallel lists of (raw_score, label)
     b_data: dict[str, tuple[list[float], list[int]]] = {}
     c_data: dict[str, tuple[list[float], list[int]]] = {}
 
     for i, rec in enumerate(records):
-        decoded, _ = load_record_image(rec, s)
-        feat = encoder.encode_batch([decoded])[0].numpy()
-        raw_scores = score_concepts_batch(feat[None, :], bank, device, s.concept_bank.score_batch_size)[0]
+        raw_scores = score_concepts_batch(embeddings[i][None, :], bank, device, s.concept_bank.score_batch_size)[0]
 
         text = reports.get(rec.subject_id, rec.study_id)
         gt = ground_truth_polarity_for_study(rec.study_id, text, radgraph, radlex, vocab, s)

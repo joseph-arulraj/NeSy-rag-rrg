@@ -84,6 +84,8 @@ def per_finding_extrema(raw_scores: np.ndarray, index: GroupingIndex) -> dict[st
 class Calibrator:
     kind: str            # "isotonic" | "base_rate"
     base_rate: float
+    n_samples: int = 0   # how many (score, label) pairs this was fit on -- diagnostic only
+    n_positive: int = 0
     model: Optional[object] = None   # sklearn IsotonicRegression when kind == "isotonic"
 
     def predict_proba(self, raw_score: float) -> float:
@@ -94,13 +96,14 @@ class Calibrator:
 
 def fit_calibrator(raw_scores: list[float], labels: list[int], min_samples: int) -> Calibrator:
     n = len(labels)
+    n_pos = int(sum(labels))
     base_rate = float(np.clip(np.mean(labels), 1e-4, 1 - 1e-4)) if n else 0.5
     if n < min_samples or len(set(labels)) < 2:
-        return Calibrator(kind="base_rate", base_rate=base_rate)
+        return Calibrator(kind="base_rate", base_rate=base_rate, n_samples=n, n_positive=n_pos)
     from sklearn.isotonic import IsotonicRegression
     model = IsotonicRegression(out_of_bounds="clip", y_min=1e-4, y_max=1 - 1e-4)
     model.fit(np.asarray(raw_scores, dtype=np.float64), np.asarray(labels, dtype=np.float64))
-    return Calibrator(kind="isotonic", base_rate=base_rate, model=model)
+    return Calibrator(kind="isotonic", base_rate=base_rate, n_samples=n, n_positive=n_pos, model=model)
 
 
 # --------------------------------------------------------------------------- thresholds
@@ -226,10 +229,16 @@ def run_calibration(settings: Settings, log: Callable[[str], None] = print, limi
         xs, ys = source_data
         posteriors = [cal.predict_proba(x) for x in xs]
         hi, lo = fit_threshold(posteriors, ys)
-        if hi > 1.0:  # unreachable at target precision on this data -- use the configured fallback, not abstain-forever
-            hi = s.calibration.tau_default_hi
-        if lo < 0.0:
-            lo = s.calibration.tau_default_lo
+        # This finding WAS assessed on real (posterior, label) pairs -- if fit_threshold
+        # genuinely couldn't reach target_precision at any cutoff, that's a real "this can't be
+        # reliably detected from this evidence" result and must stay tau_hi>=1.0 (abstain,
+        # pipeline.md §5.4 AMBIG-7), not be silently papered over with the generic fallback.
+        # PREVIOUS BUG: this unconditionally substituted tau_default_hi/lo here, which is why
+        # n_findings_rejected was always 0 -- nothing was ever allowed to actually abstain.
+        # tau_default_hi/lo are still the right fallback, but only for findings that never even
+        # got a threshold FIT attempt at all (too little data -- handled by the missing-key
+        # fallback in fuse.py's `calib.thresholds.get(finding, (tau_default_hi, tau_default_lo))`,
+        # not here).
         thresholds[finding] = (hi, lo)
     log(f"fitted thresholds for {len(thresholds)} findings")
 

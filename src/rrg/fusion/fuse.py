@@ -28,7 +28,7 @@ confident absence has LOW `confidence` (= P(present)) by construction.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Optional
 
 import numpy as np
@@ -104,14 +104,23 @@ def fuse_study(
             prior_logit = _logit(calibrated)
             prior_source = "C"
             n_sources += 1
-            support.append({"source": "C", "raw_score": c_pred.raw_probability, "calibrated": calibrated})
+            support.append({
+                "source": "C", "raw_score": c_pred.raw_probability, "calibrated": calibrated,
+                "contributing_concepts": [asdict(cc) for cc in c_pred.top_contributing_concepts],
+            })
         elif b_group is not None and np.isfinite(b_group.present_score):
             cal = calib.calibrators.get(("B", finding))
             calibrated = cal.predict_proba(b_group.present_score) if cal else _sigmoid(b_group.present_score)
             prior_logit = _logit(calibrated)
             prior_source = "B"
             n_sources += 1
-            support.append({"source": "B", "raw_score": b_group.present_score, "calibrated": calibrated})
+            support.append({
+                "source": "B", "raw_score": b_group.present_score, "calibrated": calibrated,
+                "contributing_concepts": [
+                    {**asdict(cc), "resolved_polarity": cc.resolved_polarity.value}
+                    for cc in b_group.top_contributing_concepts
+                ],
+            })
         else:
             cal = calib.calibrators.get(("C", finding)) or calib.calibrators.get(("B", finding))
             base_rate = cal.base_rate if cal else 0.5
@@ -126,7 +135,13 @@ def fuse_study(
             asym = present - fc.absent_weight_b * absent
             posterior_logit += fc.w_b_delta_when_c_prior * asym
             n_sources += 1
-            support.append({"source": "B", "role": "delta", "present_score": present, "absent_score": absent})
+            support.append({
+                "source": "B", "role": "delta", "present_score": present, "absent_score": absent,
+                "contributing_concepts": [
+                    {**asdict(cc), "resolved_polarity": cc.resolved_polarity.value}
+                    for cc in b_group.top_contributing_concepts
+                ],
+            })
 
         if d_item is not None:
             # absent_support was already discounted by evidence_d.absent_weight when accumulated
@@ -135,7 +150,8 @@ def fuse_study(
             posterior_logit += fc.w_d_delta * asym
             n_sources += 1
             support.append({
-                "source": "D", "role": "delta", "present_support": d_item.present_support,
+                "source": "D", "role": "delta", "source_report_ids": d_item.source_report_ids,
+                "present_support": d_item.present_support,
                 "absent_support": d_item.absent_support,
                 "n_neighbours": d_item.present_count + d_item.absent_count,
             })

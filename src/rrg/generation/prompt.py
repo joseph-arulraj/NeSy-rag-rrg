@@ -44,6 +44,15 @@ do not invent your own hedging language.
 - Write in standard radiology report style: a Findings section, then an Impression section.
 - Do not mention confidence scores, source names, finding_ids, or any other internal system \
 detail anywhere in the output text -- translate them into ordinary clinical prose only.
+- The same finding label can appear more than once, with different anatomy/laterality (e.g. \
+support_devices on the right, on the left, and midline) -- these are grouped together in the \
+list below. Describe every one of them in ONE combined sentence covering all the affected \
+locations (e.g. "Support devices are present in the right and left lung and midline."), NOT one \
+separate sentence per entry. Writing "X is present. X is also noted. X is also present." for \
+repeated entries of the same finding is wrong even though each sentence is individually true -- \
+combine them. If entries of the same finding differ in confidence band, keep the more cautious \
+hedging for the sentence covering all of them, or split into at most two sentences (one per \
+hedge level actually present), never one sentence per entry.
 """
 
 

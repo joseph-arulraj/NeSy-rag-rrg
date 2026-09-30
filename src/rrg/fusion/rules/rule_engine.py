@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from pathlib import Path
+from typing import Callable, Optional
 
 import yaml
 
@@ -90,14 +91,19 @@ def _mutual_exclusivity_no_finding(findings: list[Finding], rules: RulesTable):
             ))
         return [f for f in findings if f not in losers], audit, losers
 
-    audit.append(RuleApplication(
-        rule_id="mutual_exclusivity_no_finding", rule_version="1", targets=[best_no_finding.finding_id],
-        action="drop", before={"polarity": best_no_finding.polarity, "confidence": best_no_finding.confidence},
-        after={"polarity": "suppressed"},
-        rationale=(f"co-asserted finding '{best_other.label}' (confidence {best_other.confidence:.3f}) "
-                   f"outranks 'no_finding' (confidence {best_no_finding.confidence:.3f})"),
-    ))
-    return [f for f in findings if f is not best_no_finding], audit, [best_no_finding]
+    # Drop EVERY no_finding node, not just the best one -- B and C can each independently
+    # produce a no_finding node, and leaving a second, lower-confidence one behind would just
+    # re-trigger this same rule on the next cascade iteration (confirmed as a real cause of
+    # non-convergence, not a hypothetical).
+    for f in no_finding_nodes:
+        audit.append(RuleApplication(
+            rule_id="mutual_exclusivity_no_finding", rule_version="1", targets=[f.finding_id, best_other.finding_id],
+            action="drop", before={"polarity": f.polarity, "confidence": f.confidence},
+            after={"polarity": "suppressed"},
+            rationale=(f"co-asserted finding '{best_other.label}' (confidence {best_other.confidence:.3f}) "
+                       f"outranks 'no_finding' (confidence {f.confidence:.3f})"),
+        ))
+    return [f for f in findings if f not in no_finding_nodes], audit, no_finding_nodes
 
 
 def _laterality_consistency(findings: list[Finding], rules: RulesTable):
@@ -155,26 +161,54 @@ def _laterality_consistency(findings: list[Finding], rules: RulesTable):
 _PASSES = [_attribute_validity, _mutual_exclusivity_no_finding, _laterality_consistency]
 
 
+def _fingerprint(findings: list[Finding]) -> frozenset:
+    """A cheap, order-independent signature of the graph's state -- used to detect TRUE
+    non-convergence (the exact same state recurring) separately from "still making progress,
+    just needs more rounds" (a large, real graph can legitimately take a few iterations to
+    settle when rules interact, e.g. attribute_validity freeing up a node that
+    laterality_consistency then needs to look at)."""
+    return frozenset((f.finding_id, f.label, f.laterality.value, f.polarity, round(f.confidence, 6)) for f in findings)
+
+
 # --------------------------------------------------------------------------- orchestration
-def apply_rules(graph: BeliefGraph, settings: Settings) -> BeliefGraph:
+def apply_rules(graph: BeliefGraph, settings: Settings, log: Optional[Callable[[str], None]] = None) -> BeliefGraph:
     rules = load_rules_table(settings.rules.rules_path)
     findings = list(graph.findings)
     all_audit: list[RuleApplication] = []
     all_suppressed: list[Finding] = list(graph.suppressed)
+    seen_fingerprints: dict[frozenset, int] = {}
 
-    for _iteration in range(settings.rules.max_cascade_iterations):
+    for iteration in range(settings.rules.max_cascade_iterations):
         changed = False
+        iter_summary = []
         for rule_pass in _PASSES:
             findings, audit, suppressed = rule_pass(findings, rules)
             if audit:
                 changed = True
                 all_audit.extend(audit)
                 all_suppressed.extend(suppressed)
+                iter_summary.append(f"{rule_pass.__name__}: {len(audit)} action(s) ({[a.rule_id for a in audit][:3]}...)")
+        if log:
+            log(f"    N25 iteration {iteration + 1}: " + ("; ".join(iter_summary) if iter_summary else "no changes"))
         if not changed:
             break
+        fp = _fingerprint(findings)
+        if fp in seen_fingerprints:
+            raise RuleEngineCascadeError(
+                f"N25 rules are oscillating, not converging: the exact same graph state recurred "
+                f"at iteration {seen_fingerprints[fp] + 1} and again at {iteration + 1} "
+                f"(rules.max_cascade_iterations={settings.rules.max_cascade_iterations}). "
+                f"This is a real cycle in the rule logic, not just a slow-but-correct cascade -- "
+                f"check which rule_id keeps re-firing on the same finding_ids in the per-iteration log above."
+            )
+        seen_fingerprints[fp] = iteration
     else:
         raise RuleEngineCascadeError(
-            f"N25 rule application did not converge within rules.max_cascade_iterations={settings.rules.max_cascade_iterations}"
+            f"N25 rule application was still changing every iteration after "
+            f"rules.max_cascade_iterations={settings.rules.max_cascade_iterations} rounds, without repeating a "
+            f"prior state -- may just need a higher limit for this study's finding count "
+            f"({len(graph.findings)} initial findings), or may be a slow-converging real cycle. "
+            f"Check the per-iteration log above for which rule kept firing."
         )
 
     return BeliefGraph(

@@ -178,7 +178,12 @@ fusion:                      # N23 (pipeline.md §5.2) -- see FusionConfig's doc
 
 rules:                       # N25 (pipeline.md §5.4)
   rules_path: configs/n25_rules.yaml
-  max_cascade_iterations: 5
+  # 5 was untested against real data and too low -- a real study with 27+ admitted findings
+  # legitimately needs more than 5 rounds for rules to settle (e.g. attribute_validity freeing
+  # a node that laterality_consistency only then examines). apply_rules() now separately detects
+  # TRUE oscillation (the exact same graph state recurring) and fails fast on that regardless of
+  # this limit, so raising this only allows more rounds of genuine, non-repeating progress.
+  max_cascade_iterations: 20
 
 llm:                        # N27 report generation (pipeline.md §6.1)
   provider: openai_compatible   # a chat/completions-shaped API -- KCL's hosted endpoint below

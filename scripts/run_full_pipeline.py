@@ -121,7 +121,7 @@ def main() -> None:
                 spatial_unavailable=not s.spatial_enabled,
             )
             initial_graph = build_initial_graph(fused, study_meta)
-            verified_graph = apply_rules(initial_graph, s)
+            verified_graph = apply_rules(initial_graph, s, log=print)
 
             # ---- N27 -> N28
             draft = generate_draft_report(verified_graph, llm)
@@ -132,9 +132,15 @@ def main() -> None:
                 "n_findings_rejected": len(verified_graph.rejected),
                 "n_rule_applications": len(verified_graph.audit),
                 "findings": [
-                    {"label": f.label, "anatomy": f.anatomy, "laterality": f.laterality.value,
-                     "polarity": f.polarity, "confidence": f.confidence}
+                    {"finding_id": f.finding_id, "label": f.label, "anatomy": f.anatomy, "laterality": f.laterality.value,
+                     "polarity": f.polarity, "confidence": f.confidence,
+                     "support": [asdict(ref) for ref in f.support]}
                     for f in verified_graph.findings
+                ],
+                "rejected_findings": [
+                    {"finding_id": f.finding_id, "label": f.label, "anatomy": f.anatomy, "laterality": f.laterality.value,
+                     "polarity": f.polarity, "confidence": f.confidence}
+                    for f in verified_graph.rejected
                 ],
                 "rule_audit": [asdict(r) for r in verified_graph.audit],
                 "draft_report": draft.text,

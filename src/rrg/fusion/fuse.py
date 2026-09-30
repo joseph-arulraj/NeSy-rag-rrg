@@ -34,10 +34,80 @@ from typing import Optional
 import numpy as np
 
 from ..cbm.infer import CBMPrediction
-from ..concepts.grouping import FindingGroup
+from ..concepts.grouping import ContributingConcept, FindingGroup
 from ..core.config import Settings
 from .calibrate import CalibrationArtifacts
 from ..retrieval.evidence_d import EvidenceDItem
+
+
+def _merge_b_groups_by_laterality(groups: list[FindingGroup]) -> dict[tuple, FindingGroup]:
+    """Collapses B's `(finding, anatomy, laterality)` groups down to `(finding, laterality)`,
+    merging across anatomy. Different anatomy resolutions of the same finding+laterality are
+    near-synonymous PHRASING variants (e.g. some concepts describing a rib fracture resolve a
+    specific RadLex anatomy term, others don't) -- not genuinely distinct clinical facts.
+    Confirmed as a real, repeated problem on actual pipeline output, not hypothetical:
+    pleural_effusion, edema, fracture, lung_opacity, support_devices, and no_finding all
+    fragmented this way, producing multiple separate belief-graph nodes (and repetitive report
+    sentences) for what was really one finding. This also removes an inconsistency: C has no
+    anatomy dimension at all, so B/D fragmenting by anatomy while C doesn't was already an
+    asymmetry, not a deliberate design choice.
+
+    present_score/absent_score: MAX across the merged variants -- the same "max across group
+    members" semantics concepts/grouping.py already uses *within* one group, now applied across
+    the anatomy-fragmented groups too, so this doesn't inflate confidence by summing what are
+    really alternative phrasings of the same evidence.
+    present_count/absent_count: summed -- still meaningful as "how many concepts support this".
+    top_contributing_concepts: re-ranked top-N over the union of all merged variants' concepts,
+    deduplicated by concept_id (the same concept can appear in more than one anatomy-fragmented
+    variant if its own anatomy resolution was itself ambiguous).
+    """
+    buckets: dict[tuple, list[FindingGroup]] = {}
+    for g in groups:
+        buckets.setdefault((g.finding, g.laterality.value), []).append(g)
+
+    merged: dict[tuple, FindingGroup] = {}
+    for (finding, laterality_val), members in buckets.items():
+        present_scores = [m.present_score for m in members if np.isfinite(m.present_score)]
+        absent_scores = [m.absent_score for m in members if np.isfinite(m.absent_score)]
+        best_by_concept: dict[int, ContributingConcept] = {}
+        for m in members:
+            for c in m.top_contributing_concepts:
+                prev = best_by_concept.get(c.concept_id)
+                if prev is None or abs(c.raw_score) > abs(prev.raw_score):
+                    best_by_concept[c.concept_id] = c
+        top_n = sorted(best_by_concept.values(), key=lambda c: -abs(c.raw_score))[:5]
+        merged[(finding, laterality_val)] = FindingGroup(
+            finding=finding, anatomy=None, laterality=members[0].laterality,
+            present_score=max(present_scores) if present_scores else float("nan"),
+            present_count=sum(m.present_count for m in members),
+            absent_score=max(absent_scores) if absent_scores else float("nan"),
+            absent_count=sum(m.absent_count for m in members),
+            top_contributing_concepts=top_n,
+        )
+    return merged
+
+
+def _merge_d_items_by_laterality(items: list[EvidenceDItem]) -> dict[tuple, EvidenceDItem]:
+    """Same merge, for D -- see _merge_b_groups_by_laterality's docstring. present_support/
+    absent_support are also MAXed, not summed, for the same reason: report_facts.py resolves
+    anatomy per sentence, so the same underlying neighbour evidence can fragment across anatomy
+    here too, and summing it would double-count one neighbour's support across the merged
+    buckets rather than treating it as one piece of evidence."""
+    buckets: dict[tuple, list[EvidenceDItem]] = {}
+    for d in items:
+        buckets.setdefault((d.finding, d.laterality.value), []).append(d)
+
+    merged: dict[tuple, EvidenceDItem] = {}
+    for (finding, laterality_val), members in buckets.items():
+        merged[(finding, laterality_val)] = EvidenceDItem(
+            finding=finding, anatomy=None, laterality=members[0].laterality,
+            present_support=max((m.present_support for m in members), default=0.0),
+            present_count=max((m.present_count for m in members), default=0),
+            absent_support=max((m.absent_support for m in members), default=0.0),
+            absent_count=max((m.absent_count for m in members), default=0),
+            source_report_ids=sorted({rid for m in members for rid in m.source_report_ids}),
+        )
+    return merged
 
 
 def _logit(p: float) -> float:
@@ -76,23 +146,23 @@ def fuse_study(
     fc = settings.fusion
     c_by_finding = {p.pathology: p for p in c_preds}
 
-    # Indexed at full (finding, anatomy, laterality) granularity for the belief graph's node
-    # keys; the prior/delta DECISION is made per bare finding and applied identically to every
-    # (anatomy, laterality) variant of that finding B or D produced.
-    by_key: dict[tuple, FindingGroup] = {(g.finding, g.anatomy, g.laterality.value): g for g in b_groups}
-    by_key_d: dict[tuple, EvidenceDItem] = {(d.finding, d.anatomy, d.laterality.value): d for d in d_items}
+    # Merged to (finding, laterality) -- see _merge_b_groups_by_laterality's docstring for why
+    # anatomy is collapsed here rather than kept as part of the node key.
+    by_key = _merge_b_groups_by_laterality(b_groups)
+    by_key_d = _merge_d_items_by_laterality(d_items)
 
     all_keys = set(by_key) | set(by_key_d)
     for finding in c_by_finding:
         if not any(k[0] == finding for k in all_keys):
-            # C covers this finding but neither B nor D produced a spatial variant -- still
+            # C covers this finding but neither B nor D produced a laterality variant -- still
             # needs a node; C carries no anatomy/laterality attribute at all (pipeline.md §4.7).
-            all_keys.add((finding, None, "unspecified"))
+            all_keys.add((finding, "unspecified"))
 
     out: list[FusedFinding] = []
-    for finding, anatomy, laterality in sorted(all_keys, key=lambda k: (k[0], k[1] or "", k[2])):
-        b_group = by_key.get((finding, anatomy, laterality))
-        d_item = by_key_d.get((finding, anatomy, laterality))
+    for finding, laterality in sorted(all_keys):
+        anatomy = None  # always, post-merge -- see _merge_b_groups_by_laterality's docstring
+        b_group = by_key.get((finding, laterality))
+        d_item = by_key_d.get((finding, laterality))
         c_pred = c_by_finding.get(finding)
 
         support: list[dict] = []

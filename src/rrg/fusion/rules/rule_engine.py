@@ -3,12 +3,15 @@ graph: removes or down-weights implausible/conflicting claims, non-destructively
 findings are kept, never deleted -- the "non-destructive" requirement) with a full
 `RuleApplication` audit trail per action (deterministic ordering -- INV-4).
 
-Implements three of pipeline.md's rule categories concretely: attribute validity (a laterality
+Implements four of pipeline.md's rule categories concretely: attribute validity (a laterality
 value outside a finding's valid range), mutual exclusivity (no_finding vs. any other asserted
-finding), and laterality consistency (the same finding/anatomy asserted both left and right by
+finding), laterality consistency (the same finding/anatomy asserted both left and right by
 different sources) -- the margin-based resolution policy worked out in this project's N25 design
 discussion: a clear confidence margin trusts the winner outright; a narrow margin widens to
-`unspecified` rather than guess, with both contested sides recorded in the audit.
+`unspecified` rather than guess, with both contested sides recorded in the audit -- and laterality
+unspecified-subsumption (an unspecified-laterality node dropped when a more specific node for the
+same finding already exists, since unspecified is strictly less informative, not a separate
+claim).
 
 NOT implemented here -- flagged, not silently skipped:
 """
@@ -215,7 +218,57 @@ def _laterality_consistency(findings: list[Finding], rules: RulesTable):
     return kept, audit, suppressed
 
 
-_PASSES = [_attribute_validity, _suppress_negative_no_finding, _mutual_exclusivity_no_finding, _laterality_consistency]
+def _laterality_unspecified_subsumption(findings: list[Finding], rules: RulesTable):
+    """Real, repeated pattern across every study in the latest full-pipeline run, not
+    hypothetical: the same (label, anatomy) is independently asserted with laterality=unspecified
+    AND with one or more specific values (left/right/bilateral/midline) -- e.g. support_devices
+    at "midline, right, and unspecified locations", pleural_effusion at "bilateral... left...
+    [unspecified]". UNSPECIFIED is strictly less informative than any specific value by
+    construction (it means "a source couldn't resolve a side", not "a source positively
+    determined there is no side") -- it is not a genuinely separate claim, just a resolution
+    fragment. Whenever at least one specific-laterality node already exists for the same
+    (label, anatomy), the unspecified node(s) are dropped as redundant.
+
+    Deliberately NOT touching disagreement between two specific values (e.g. left vs right) --
+    that is _laterality_consistency's job above, which encodes a real, separate judgment call
+    (margin-based winner vs. widen-to-unspecified) this pass doesn't second-guess. Also
+    deliberately NOT merging two different specific values with each other (e.g. midline and
+    right both surviving side by side) -- support_devices in particular can legitimately
+    reference two physically different devices under one label (e.g. a midline central line and
+    a right-sided chest tube), so collapsing those would risk silently discarding a real
+    distinction; this pass only removes the strictly-redundant unspecified fragment."""
+    by_key: dict[tuple, list[Finding]] = {}
+    for f in findings:
+        if f.polarity == "present":
+            by_key.setdefault((f.label, f.anatomy), []).append(f)
+
+    audit, suppressed = [], []
+    kept = list(findings)
+    for (label, _anatomy), nodes in by_key.items():
+        unspecified = [n for n in nodes if n.laterality == Laterality.UNSPECIFIED]
+        specific = [n for n in nodes if n.laterality != Laterality.UNSPECIFIED]
+        if not unspecified or not specific:
+            continue
+        for f in unspecified:
+            audit.append(RuleApplication(
+                rule_id="laterality_unspecified_subsumption", rule_version="1",
+                targets=[n.finding_id for n in specific] + [f.finding_id], action="drop",
+                before={"laterality": "unspecified", "confidence": f.confidence},
+                after={"laterality": "suppressed"},
+                rationale=(f"'{label}' unspecified-laterality node (confidence {f.confidence:.3f}) is "
+                           f"redundant with {len(specific)} more specific node(s) already asserted "
+                           f"({sorted({n.laterality.value for n in specific})}) for the same finding -- "
+                           f"unspecified carries no information beyond them"),
+            ))
+        suppressed.extend(unspecified)
+        kept = [f for f in kept if f not in unspecified]
+    return kept, audit, suppressed
+
+
+_PASSES = [
+    _attribute_validity, _suppress_negative_no_finding, _mutual_exclusivity_no_finding,
+    _laterality_consistency, _laterality_unspecified_subsumption,
+]
 
 
 def _fingerprint(findings: list[Finding]) -> frozenset:

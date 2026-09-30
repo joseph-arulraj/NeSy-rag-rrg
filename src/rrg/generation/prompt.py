@@ -41,7 +41,11 @@ Rules, all mandatory:
 - Include explicit NEGATIVE findings as ordinary negations (e.g. "No pneumothorax is seen.").
 - Use the given confidence band's hedging language exactly (assertive / probable / possible) -- \
 do not invent your own hedging language.
-- Write in standard radiology report style: a Findings section, then an Impression section.
+- Write in standard radiology report style: a Findings section, then an Impression section. The \
+Impression is NOT a copy of the Findings section -- it is a brief, prioritised summary (most \
+clinically significant items first, minor/incidental items last or omitted if truly minor). Use \
+different, more concise sentence structure than Findings; do not repeat the same sentences \
+verbatim between the two sections.
 - Do not mention confidence scores, source names, finding_ids, or any other internal system \
 detail anywhere in the output text -- translate them into ordinary clinical prose only.
 - The same finding label can appear more than once, with different anatomy/laterality (e.g. \

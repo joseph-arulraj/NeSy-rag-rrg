@@ -183,12 +183,24 @@ rules:                       # N25 (pipeline.md §5.4)
 llm:                        # N27 report generation (pipeline.md §6.1)
   provider: openai_compatible   # a chat/completions-shaped API -- KCL's hosted endpoint below
   base_url: https://ai.create.kcl.ac.uk/api/v1/chat/completions
-  model: "arc:nexus"
+  # arc:nano, not arc:nexus: same backend model (Qwen/Qwen3.8-27B) but defaults to NO thinking
+  # mode, vs. nexus's "medium thinking" -- confirmed via GET /v1/models on the real endpoint.
+  # N27 is pure linguistic realisation from an already-verified fact set (INV-3) -- there is
+  # nothing left to reason about by the time it runs, and nexus's reasoning phase was observed
+  # burning its entire token budget deliberating over formatting edge cases instead of just
+  # following the rules, producing finish_reason='length' with zero actual content.
+  model: "arc:nano"
   api_key_env: RRG_LLM_API_KEY   # export this yourself: `export RRG_LLM_API_KEY=sk-...` --
   # the key is NEVER stored in a config file or committed; this is only the env var's NAME
   system_prompt_version: v1
   temperature: 0.2          # pipeline.md §6.1: low temperature for the first (only, v1) attempt
-  max_tokens: 1024
+  # arc:nexus is a reasoning model (vLLM backend, emits a separate 'reasoning_content' scratchpad
+  # before the actual answer) -- confirmed directly on HPC: a real report prompt (~15 findings)
+  # exhausted the entire budget on reasoning alone (reasoning_tokens=1024, finish_reason='length',
+  # content=None) without writing a single word of the report. The smoke test's trivial one-line
+  # prompt never surfaced this. Generous on purpose -- reasoning tokens are consumed before
+  # content tokens, not in addition to a separate budget.
+  max_tokens: 4096
   timeout_s: 60
   max_retries: 3
 

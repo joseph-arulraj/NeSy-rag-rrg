@@ -110,11 +110,21 @@ def _parse_response(data: dict[str, Any], model: str, prompt_hash: str) -> LLMRe
         choices = data["choices"]
         if not choices:
             raise LLMMalformedOutputError(f"LLM response had an empty 'choices' list: {data!r}")
-        text = choices[0]["message"]["content"]
+        choice = choices[0]
+        text = choice["message"]["content"]
     except (KeyError, IndexError, TypeError) as exc:
         raise LLMMalformedOutputError(
             f"LLM response did not match the expected chat/completions shape: {data!r}"
         ) from exc
     if not text or not text.strip():
+        if choice.get("finish_reason") == "length":
+            usage = data.get("usage", {})
+            reasoning = (usage.get("completion_tokens_details") or {}).get("reasoning_tokens")
+            raise LLMMalformedOutputError(
+                f"LLM hit max_tokens before writing any content (finish_reason='length', "
+                f"reasoning_tokens={reasoning}, completion_tokens={usage.get('completion_tokens')}). "
+                f"This model reasons before answering and consumed the whole budget doing that -- "
+                f"raise llm.max_tokens, not a sign of a malformed response."
+            )
         raise LLMMalformedOutputError(f"LLM returned an empty message: {data!r}")
     return LLMResponse(text=text, model=model, prompt_hash=prompt_hash, raw=data)

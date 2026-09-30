@@ -69,41 +69,98 @@ def _attribute_validity(findings: list[Finding], rules: RulesTable):
 
 
 def _mutual_exclusivity_no_finding(findings: list[Finding], rules: RulesTable):
-    if not rules.mutual_exclusive_with_no_finding:
-        return findings, [], []
+    """Two distinct problems, both confirmed on real pipeline output, not hypothetical:
+
+    (1) B (and C) can each independently produce a no_finding node, and B can further fragment
+        it by anatomy (the same fragmentation pattern seen elsewhere, e.g. pleural_effusion) --
+        left unmerged, this renders as several redundant "no evidence of abnormality" sentences.
+        No_finding is ALWAYS deduplicated to its single highest-confidence node first, regardless
+        of what else happens below.
+
+    (2) The original design compared no_finding's score against only the SINGLE strongest other
+        finding, one-on-one -- so one high-confidence no_finding node could veto every other
+        admitted finding at once, each in an individually-"won" pairwise comparison. Confirmed on
+        real output: no_finding at 0.995 beat 8 separate independently-admitted findings one at a
+        time, including two others independently above 0.9 confidence, wiping out all of them.
+        That is not defensible: no_finding's whole claim is "nothing ELSE is going on", which
+        becomes implausible once there is more than one independent finding backing the opposite,
+        regardless of what no_finding's own single calibrated score happens to be (itself possibly
+        just a calibration artifact given how sparse the validation data is for this label -- see
+        the calibration-quality discussion earlier). no_finding now only wins when there is AT
+        MOST ONE competing finding and it's weaker."""
     no_finding_nodes = [f for f in findings if f.label == "no_finding" and f.polarity == "present"]
-    other_present = [f for f in findings if f.label != "no_finding" and f.polarity == "present"]
-    if not no_finding_nodes or not other_present:
+    if not no_finding_nodes:
         return findings, [], []
 
-    audit = []
+    audit: list[RuleApplication] = []
+    suppressed: list[Finding] = []
+    kept = list(findings)
     best_no_finding = max(no_finding_nodes, key=lambda f: f.confidence)
-    best_other = max(other_present, key=lambda f: f.confidence)
-    if best_no_finding.confidence >= best_other.confidence:
-        losers = other_present
-        for f in losers:
+
+    extra_no_finding = [f for f in no_finding_nodes if f is not best_no_finding]
+    if extra_no_finding:
+        for f in extra_no_finding:
             audit.append(RuleApplication(
                 rule_id="mutual_exclusivity_no_finding", rule_version="1",
                 targets=[best_no_finding.finding_id, f.finding_id], action="drop",
                 before={"polarity": f.polarity, "confidence": f.confidence}, after={"polarity": "suppressed"},
-                rationale=(f"'no_finding' (confidence {best_no_finding.confidence:.3f}) outranks "
-                           f"co-asserted '{f.label}' (confidence {f.confidence:.3f})"),
+                rationale=(f"redundant 'no_finding' node (confidence {f.confidence:.3f}) -- "
+                           f"'{best_no_finding.finding_id}' (confidence {best_no_finding.confidence:.3f}) already covers this"),
             ))
-        return [f for f in findings if f not in losers], audit, losers
+        suppressed.extend(extra_no_finding)
+        kept = [f for f in kept if f not in extra_no_finding]
 
-    # Drop EVERY no_finding node, not just the best one -- B and C can each independently
-    # produce a no_finding node, and leaving a second, lower-confidence one behind would just
-    # re-trigger this same rule on the next cascade iteration (confirmed as a real cause of
-    # non-convergence, not a hypothetical).
-    for f in no_finding_nodes:
+    other_present = [f for f in kept if f.label != "no_finding" and f.polarity == "present"]
+    if not other_present:
+        return kept, audit, suppressed
+
+    if len(other_present) == 1 and best_no_finding.confidence >= other_present[0].confidence:
+        f = other_present[0]
         audit.append(RuleApplication(
-            rule_id="mutual_exclusivity_no_finding", rule_version="1", targets=[f.finding_id, best_other.finding_id],
-            action="drop", before={"polarity": f.polarity, "confidence": f.confidence},
-            after={"polarity": "suppressed"},
-            rationale=(f"co-asserted finding '{best_other.label}' (confidence {best_other.confidence:.3f}) "
-                       f"outranks 'no_finding' (confidence {f.confidence:.3f})"),
+            rule_id="mutual_exclusivity_no_finding", rule_version="1",
+            targets=[best_no_finding.finding_id, f.finding_id], action="drop",
+            before={"polarity": f.polarity, "confidence": f.confidence}, after={"polarity": "suppressed"},
+            rationale=(f"'no_finding' (confidence {best_no_finding.confidence:.3f}) outranks the only "
+                       f"co-asserted finding '{f.label}' (confidence {f.confidence:.3f})"),
         ))
-    return [f for f in findings if f not in no_finding_nodes], audit, no_finding_nodes
+        suppressed.append(f)
+        kept = [x for x in kept if x is not f]
+        return kept, audit, suppressed
+
+    audit.append(RuleApplication(
+        rule_id="mutual_exclusivity_no_finding", rule_version="1",
+        targets=[best_no_finding.finding_id] + [f.finding_id for f in other_present],
+        action="drop", before={"polarity": best_no_finding.polarity, "confidence": best_no_finding.confidence},
+        after={"polarity": "suppressed"},
+        rationale=(f"{len(other_present)} independently co-asserted finding(s) outweigh 'no_finding' "
+                   f"(confidence {best_no_finding.confidence:.3f}) taken together, regardless of its own score"),
+    ))
+    suppressed.append(best_no_finding)
+    kept = [x for x in kept if x is not best_no_finding]
+    return kept, audit, suppressed
+
+
+def _suppress_negative_no_finding(findings: list[Finding], rules: RulesTable):
+    """'no_finding' is a meta-claim ("nothing else is wrong"), not an ordinary pathology --
+    unlike every other label, a NEGATIVE assertion of it is a double negative ("it is false that
+    there's no finding" = "something IS wrong") that renders as confusing, backwards-sounding
+    prose ("There is no evidence of abnormality") sitting right next to a list of real findings
+    that says the opposite (confirmed directly in real pipeline output, not hypothetical). An
+    absent/uncertain no_finding node adds no information the other admitted findings don't
+    already convey, so it's dropped outright rather than rendered."""
+    targets = [f for f in findings if f.label == "no_finding" and f.polarity != "present"]
+    if not targets:
+        return findings, [], []
+    audit = [
+        RuleApplication(
+            rule_id="suppress_negative_no_finding", rule_version="1", targets=[f.finding_id],
+            action="drop", before={"polarity": f.polarity, "confidence": f.confidence}, after={"polarity": "suppressed"},
+            rationale="'no_finding' asserted as absent/uncertain is a confusing double-negative and adds no "
+                      "information beyond the other admitted findings -- dropped rather than rendered",
+        )
+        for f in targets
+    ]
+    return [f for f in findings if f not in targets], audit, targets
 
 
 def _laterality_consistency(findings: list[Finding], rules: RulesTable):
@@ -158,7 +215,7 @@ def _laterality_consistency(findings: list[Finding], rules: RulesTable):
     return kept, audit, suppressed
 
 
-_PASSES = [_attribute_validity, _mutual_exclusivity_no_finding, _laterality_consistency]
+_PASSES = [_attribute_validity, _suppress_negative_no_finding, _mutual_exclusivity_no_finding, _laterality_consistency]
 
 
 def _fingerprint(findings: list[Finding]) -> frozenset:

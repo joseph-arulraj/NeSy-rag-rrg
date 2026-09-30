@@ -7,6 +7,14 @@ concept tags to be fresh (scripts/build_concept_tags.py).
 """
 from __future__ import annotations
 
+import os
+
+# Must be set before `radgraph`/`transformers` are imported anywhere below (it's read once at
+# import time) -- not relying on the caller having exported it in their shell, since that's easy
+# to forget across separate terminal sessions and doesn't reliably suppress the warning anyway
+# (RadGraph's own internal AllenNLP-based multiprocessing can retrigger it regardless).
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
 import sys
 from pathlib import Path
 

@@ -14,6 +14,11 @@ Prerequisites (each a separate script, run once, in this order):
 """
 from __future__ import annotations
 
+import os
+
+# See scripts/run_calibration.py's comment -- must be set before radgraph/transformers import.
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
 import json
 import sys
 from dataclasses import asdict

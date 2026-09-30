@@ -9,6 +9,11 @@ the last completed checkpoint chunk rather than re-parsing from scratch.
 """
 from __future__ import annotations
 
+import os
+
+# See scripts/run_calibration.py's comment -- must be set before radgraph/transformers import.
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
 import argparse
 import sys
 from pathlib import Path

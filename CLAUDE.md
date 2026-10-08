@@ -12,7 +12,7 @@ Progress lives in these files. Read them at the start of a session and keep them
 - `RESULTS.md`: every experiment result, including negative ones.
 - `QUEUE.md`: what is running, queued, finished, failed and waiting on the user.
 - `STATE.md`: decisions with reasons, conventions, pitfalls, open items.
-- `v2/KG.md`: the knowledge base, its sources and what still needs review.
+- `KG.md`: the knowledge base, its sources and what still needs review.
 
 ## Rules that always hold
 
@@ -23,7 +23,7 @@ Progress lives in these files. Read them at the start of a session and keep them
 - Calibrators, thresholds and test metrics each use a different split. Use Platt or beta scaling, not isotonic.
 - CLEAR was pretrained on all of MIMIC-CXR. Label every MIMIC result as "seen by backbone".
 - Scratch quota is 1000 GB and nearly full. Never copy a dataset. Check free space before writing anything large.
-- Build in a new directory. Never delete, move or overwrite the old pipeline, its outputs or any downloaded data.
+- The current pipeline lives at the repo top level (moved out of `v2/` on 2026-10-08, user decision). The old pipeline, its code and outputs are in `legacy/`: never delete or overwrite them, and never delete or move downloaded data.
 - GPU work runs as steps inside held SLURM allocations (see `COMPUTE.md`). Hold at most three (the user allowed four on 2026-10-07; ask before going above three again). Every long run checkpoints and can resume.
 - Do not add a triple store, Prolog or Logic Tensor Networks.
 

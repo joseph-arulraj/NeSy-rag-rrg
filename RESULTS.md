@@ -11,58 +11,58 @@ Every experiment result, including negative ones. Newest at the bottom.
 
 | What | Run dir | Headline |
 |---|---|---|
-| Manifests | `v2/runs/20261006-0918_manifests` (failed at PadChest-GR: 39-digit IDs overflowed int64; fixed), `v2/runs/20261006-0919_manifests` | 6 manifests; all count checks against published numbers pass |
-| Splits v0-DRAFT | `v2/runs/20261006-0920_splits` | 65,379 patients: train 59,588 / calib 1,897 / thresh 1,869 / val 500 / test 293 / heldout_loc 1,232 |
-| Split tests | `v2/runs/20261006-0920_split-tests` | 11/11 pass |
-| CheXmask smoke | `v2/runs/20261006-0922_chexmask-smoke` | 2,000 images: qc_ok 97.7 %, side convention 100 %, CTR median PA 0.492, AP 0.542; preprocessed vs original \|ΔCTR\| median 0.0004 |
-| CheXmask features (MIMIC frontal) | `v2/runs/20261006-0940_chexmask-features` (slam_cpu job 37811782, 16 workers, 11.8 min) | 243,334 / 243,334 frontal images (100 %); qc_ok 237,498 (97.6 %); side convention 100 %. CTR (qc_ok): PA median 0.491 (IQR 0.453–0.534, n 95,585), AP median 0.542 (IQR 0.501–0.582, n 141,913). Left-lung area fraction mean 0.459; heart shifted to patient's left by 0.074 thorax widths on average. Output `v2/data/features/chexmask_mimic.parquet` (42 named columns) |
-| Splits **frozen as v1** | `v2/runs/20261006-1003_split-tests-v1` | User confirmed 2026-10-06. `v2/data/splits/mimic_splits_v1.parquet` (read-only, sha256 a1e72e40…8340) has the same assignment as v0-DRAFT; 12/12 split tests pass |
-| ImaGenome scene-graph parse | `v2/runs/20261006-1004_imagenome-parse` (slam_cpu, 1.0 min) | 243,310 graphs, 0 ID mismatches vs MIMIC; 8,695,606 region boxes (36 regions/image); 7,306,391 (image, region, label) rows. Outputs `v2/data/features/imagenome_{regions,region_labels,meta}.parquet` |
+| Manifests | `runs/20261006-0918_manifests` (failed at PadChest-GR: 39-digit IDs overflowed int64; fixed), `runs/20261006-0919_manifests` | 6 manifests; all count checks against published numbers pass |
+| Splits v0-DRAFT | `runs/20261006-0920_splits` | 65,379 patients: train 59,588 / calib 1,897 / thresh 1,869 / val 500 / test 293 / heldout_loc 1,232 |
+| Split tests | `runs/20261006-0920_split-tests` | 11/11 pass |
+| CheXmask smoke | `runs/20261006-0922_chexmask-smoke` | 2,000 images: qc_ok 97.7 %, side convention 100 %, CTR median PA 0.492, AP 0.542; preprocessed vs original \|ΔCTR\| median 0.0004 |
+| CheXmask features (MIMIC frontal) | `runs/20261006-0940_chexmask-features` (slam_cpu job 37811782, 16 workers, 11.8 min) | 243,334 / 243,334 frontal images (100 %); qc_ok 237,498 (97.6 %); side convention 100 %. CTR (qc_ok): PA median 0.491 (IQR 0.453–0.534, n 95,585), AP median 0.542 (IQR 0.501–0.582, n 141,913). Left-lung area fraction mean 0.459; heart shifted to patient's left by 0.074 thorax widths on average. Output `data/features/chexmask_mimic.parquet` (42 named columns) |
+| Splits **frozen as v1** | `runs/20261006-1003_split-tests-v1` | User confirmed 2026-10-06. `data/splits/mimic_splits_v1.parquet` (read-only, sha256 a1e72e40…8340) has the same assignment as v0-DRAFT; 12/12 split tests pass |
+| ImaGenome scene-graph parse | `runs/20261006-1004_imagenome-parse` (slam_cpu, 1.0 min) | 243,310 graphs, 0 ID mismatches vs MIMIC; 8,695,606 region boxes (36 regions/image); 7,306,391 (image, region, label) rows. Outputs `data/features/imagenome_{regions,region_labels,meta}.parquet` |
 | Report sections | (interactive check) | Of 227,835 reports: FINDINGS+IMPRESSION 122,745; impression only 66,679; findings only 27,028; fallback 11,382 (flagged); empty 1 |
-| RadGraph speed test | `v2/runs/20261006-1006_radgraph-speedtest` | modern-radgraph-xl on CPU, 16 threads, batch 32: 12.0 reports/s |
-| RadGraph on all reports | `v2/runs/20261006-1010_radgraph-reports` | RUNNING; ETA ~5.3 h; first shard 1,998/2,000 reports with entities |
+| RadGraph speed test | `runs/20261006-1006_radgraph-speedtest` | modern-radgraph-xl on CPU, 16 threads, batch 32: 12.0 reports/s |
+| RadGraph on all reports | `runs/20261006-1010_radgraph-reports` | RUNNING; ETA ~5.3 h; first shard 1,998/2,000 reports with entities |
 
 ## Stage 0+ (items from the 2026-10-06 work list)
 
-### Item 1 — labels (`v2/runs/20261006-1022_labels`, output `v2/data/labels/labels_v1.parquet`)
+### Item 1 — labels (`runs/20261006-1022_labels`, output `data/labels/labels_v1.parquet`)
 Rule changes (labels): R1 blank→negative 2,380,509; R2 uncertain→masked 75,018; R0 no-CheXpert-row masked 104 (8 studies × 13);
 R3 positive child→parent positive 114,385 (from blank 107,560, **overriding an explicit negative 2,860**, from uncertain 3,965) — lung_opacity 56,946, consolidation 14,288, enlarged_cardiomediastinum 43,151;
 R4 uncertain child + blank parent→masked 24,442 (lung_opacity 7,379, consolidation 14,505, enlarged_cardiomediastinum 2,558). Hierarchy violations after closure: 0.
 Derived no_finding: 1 = 81,443, 0 = 138,707, masked 7,685; agrees with CheXpert "No Finding"=1 on 97.3 % where defined.
 Final positives (all studies): lung_opacity 108,471; support_devices 66,558; pleural_effusion 54,300; enlarged_cardiomediastinum 50,330; atelectasis 45,808; cardiomegaly 44,845; edema 27,018; consolidation 25,066; pneumonia 16,556; pneumothorax 10,358; lung_lesion 6,284; fracture 4,390; pleural_other 2,011.
 
-### Item 2 — split check (`v2/runs/20261006-1023_split-check`)
+### Item 2 — split check (`runs/20261006-1023_split-check`)
 Positives per finding, studies with a frontal image (calib / thresh / val): atelectasis 1,248/1,133/347; cardiomegaly 1,167/1,065/363; consolidation 685/582/178; edema 737/582/233; enlarged_cardiomediastinum 1,322/1,209/405; fracture 107/105/17; lung_lesion 141/192/64; lung_opacity 2,895/2,622/851; pleural_effusion 1,406/1,313/452; **pleural_other 47/47/14 (FLAGGED <50 in calib and thresh)**; pneumonia 438/360/115; pneumothorax 359/259/73; support_devices 1,892/1,575/550. Val is also thin for fracture (17) and pleural_other (14). Not re-split.
 
-### Item 10 — Chest ImaGenome finding-by-region and side labels (`v2/runs/20261006-1033_imagenome-labels`; done out of order because it needs no embeddings)
-Mapping `v2/kg/imagenome_map.yaml` (DRAFT, for review). Outputs `v2/data/features/imagenome_finding_region_v1.parquet` (4,101,665 image×region×finding rows; region positives 2,192,931 → 2,337,645 after is_a closure) and `imagenome_side_v1.parquet` (243,310 images on the frozen splits: train 209,559, heldout_loc 14,837, calib 7,006, thresh 6,546, val 1,959, test 3,403). Region boxes were already parsed (`imagenome_regions.parquet`), so Stage 4 needs only the GPU feature pass.
+### Item 10 — Chest ImaGenome finding-by-region and side labels (`runs/20261006-1033_imagenome-labels`; done out of order because it needs no embeddings)
+Mapping `kg/imagenome_map.yaml` (DRAFT, for review). Outputs `data/features/imagenome_finding_region_v1.parquet` (4,101,665 image×region×finding rows; region positives 2,192,931 → 2,337,645 after is_a closure) and `imagenome_side_v1.parquet` (243,310 images on the frozen splits: train 209,559, heldout_loc 14,837, calib 7,006, thresh 6,546, val 1,959, test 3,403). Region boxes were already parsed (`imagenome_regions.parquet`), so Stage 4 needs only the GPU feature pass.
 **Caveat:** ImaGenome assigns a mention with no stated side to both lungs. Edema is "bilateral" in 100 % of positives and lung_opacity in 76 %, so "bilateral" here cannot be told apart from "side not stated". Before side labels are used for training or evaluation, check them against laterality words in the report sentence.
 
-### Item 11 — external sets, loading only (`v2/runs/20261006-1037_external-contact-sheets`; done early, needs no embeddings)
-Loaders `v2/nesy/external.py`. Proposed preprocessing, the same for both sets, **to confirm**: invert MONOCHROME1, window to the 0.5–99.5 intensity percentiles, 8-bit, then CLEAR's own 448² resize as for MIMIC. DICOM WindowCenter/Width are ignored because they span the full bit range in the files checked. VinDr files are uncompressed DICOM (12–14 bit); PadChest-GR is 16-bit PNG read from the split zip in memory.
+### Item 11 — external sets, loading only (`runs/20261006-1037_external-contact-sheets`; done early, needs no embeddings)
+Loaders `nesy/external.py`. Proposed preprocessing, the same for both sets, **to confirm**: invert MONOCHROME1, window to the 0.5–99.5 intensity percentiles, 8-bit, then CLEAR's own 448² resize as for MIMIC. DICOM WindowCenter/Width are ignored because they span the full bit range in the files checked. VinDr files are uncompressed DICOM (12–14 bit); PadChest-GR is 16-bit PNG read from the split zip in memory.
 Contact sheets (24 random images each: VinDr train, VinDr test, PadChest-GR, plus a MIMIC reference) look correct: inversion right, heart on the image right, normal contrast. Some PadChest images have black padding inside the frame.
-Mapping drafts **for radiologist review**: `v2/kg/external_maps/vindr_to_findings.yaml`, `padchest_gr_to_findings.yaml`. Not evaluable: VinDr support_devices and enlarged_cardiomediastinum; PadChest-GR pneumonia and edema. No labels were scored and no metric was computed.
+Mapping drafts **for radiologist review**: `kg/external_maps/vindr_to_findings.yaml`, `padchest_gr_to_findings.yaml`. Not evaluable: VinDr support_devices and enlarged_cardiomediastinum; PadChest-GR pneumonia and edema. No labels were scored and no metric was computed.
 
-### Item 3 — CPU embeddings (DONE: `v2/runs/20261006-1100_clear-embed-cpu`)
-- 4,774 one-frontal-per-study images (official validate 1,733 + test 3,041) embedded on CPU in 28.6 min, 0 decode failures. Unified store `v2/data/embeddings/clear_frontal_v1.npy`: float16 [218,139 × 768] (335 MB), max \|norm−1\| after fp16 cast 0.0001, with index parquet. Test embeddings are cached only; nothing is scored on test.
-- 100-image consistency check vs the cached train embeddings (`v2/runs/20261006-1024_clear-embed-cpu`): cosine min 0.999996, median 1.000000; all > 0.999. The cached ids exactly equal the one-frontal-per-study policy on official train (213,365). **The cached embeddings are verified and reused.**
-- That run then FAILED while assembling the store (slice bug on the last cached chunk, after 29 min of val/test encoding, unsaved). Fixed, with a checkpoint now written before assembly; rerun `v2/runs/20261006-1100_clear-embed-cpu`. CPU throughput is about 2.4 images/s (12 threads).
+### Item 3 — CPU embeddings (DONE: `runs/20261006-1100_clear-embed-cpu`)
+- 4,774 one-frontal-per-study images (official validate 1,733 + test 3,041) embedded on CPU in 28.6 min, 0 decode failures. Unified store `data/embeddings/clear_frontal_v1.npy`: float16 [218,139 × 768] (335 MB), max \|norm−1\| after fp16 cast 0.0001, with index parquet. Test embeddings are cached only; nothing is scored on test.
+- 100-image consistency check vs the cached train embeddings (`runs/20261006-1024_clear-embed-cpu`): cosine min 0.999996, median 1.000000; all > 0.999. The cached ids exactly equal the one-frontal-per-study policy on official train (213,365). **The cached embeddings are verified and reused.**
+- That run then FAILED while assembling the store (slice bug on the last cached chunk, after 29 min of val/test encoding, unsaved). Fixed, with a checkpoint now written before assembly; rerun `runs/20261006-1100_clear-embed-cpu`. CPU throughput is about 2.4 images/s (12 threads).
 - SLURM: step creation on comp214 intermittently takes 1–3 min ("step creation temporarily disabled… Socket timed out"); launches must be verified.
 
 ### Item 12 — Stage 6/7 code (code done; sample run pending Stage 1 predictions)
-- `v2/kg/findings.yaml` v0.2: 13 findings with definitions and phrases; derived no_finding; 6 is_a, 13 may_occur_in, 6 associated_with, 5 pertinent-negative rules, each with an id and rationale.
-- `v2/kg/anatomy.yaml` (generated by `v2/scripts/build_anatomy.py`, run `20261006-1041_build-anatomy`): 48 nodes covering all 36 ImaGenome regions. part_of comes from RadLex 4.3 for 15 nodes; 30 are manual (ImaGenome zones, hila and costophrenic angles have no RadLex class); 1 manual override (RadLex aortic arch → descending aorta replaced by mediastinum).
-- `v2/nesy/kg.py`: schema validation (keys, unique ids, references, acyclic is_a and part_of). Rule modules: `grounding.py` (G1–G6), `belief.py` (D1–D4, B1–B3), `report.py` (P1–P5 template).
-- `v2/tests/test_stage6_rules.py`: **24/24 pass** (one test per rule, plus KG validation failure cases and region coverage).
+- `kg/findings.yaml` v0.2: 13 findings with definitions and phrases; derived no_finding; 6 is_a, 13 may_occur_in, 6 associated_with, 5 pertinent-negative rules, each with an id and rationale.
+- `kg/anatomy.yaml` (generated by `scripts/build_anatomy.py`, run `20261006-1041_build-anatomy`): 48 nodes covering all 36 ImaGenome regions. part_of comes from RadLex 4.3 for 15 nodes; 30 are manual (ImaGenome zones, hila and costophrenic angles have no RadLex class); 1 manual override (RadLex aortic arch → descending aorta replaced by mediastinum).
+- `nesy/kg.py`: schema validation (keys, unique ids, references, acyclic is_a and part_of). Rule modules: `grounding.py` (G1–G6), `belief.py` (D1–D4, B1–B3), `report.py` (P1–P5 template).
+- `tests/test_stage6_rules.py`: **24/24 pass** (one test per rule, plus KG validation failure cases and region coverage).
 
-### Item 4 — retrieval (`v2/runs/20261006-1148_retrieval`, 2 min)
-FAISS IndexFlatIP on the fit split only: 187,754 studies (`v2/data/index/fit_v1.faiss`). Neighbour features k ∈ {5, 10, 25} for all 218,139 studies with a frontal embedding (train 187,754, heldout_loc 13,498, calib 6,283, thresh 5,830, val 1,733, test 3,041), each excluding every study of the query's own patient; own-patient neighbours after exclusion: 0. Output `v2/data/features/retrieval_v1.parquet`.
+### Item 4 — retrieval (`runs/20261006-1148_retrieval`, 2 min)
+FAISS IndexFlatIP on the fit split only: 187,754 studies (`data/index/fit_v1.faiss`). Neighbour features k ∈ {5, 10, 25} for all 218,139 studies with a frontal embedding (train 187,754, heldout_loc 13,498, calib 6,283, thresh 5,830, val 1,733, test 3,041), each excluding every study of the query's own patient; own-patient neighbours after exclusion: 0. Output `data/features/retrieval_v1.parquet`.
 Val AUROC of nb10_frac_<finding> alone: support_devices 0.908, pleural_effusion 0.892, edema 0.852, lung_opacity 0.833, pneumothorax 0.801, atelectasis 0.785, cardiomegaly 0.776, enlarged_cardiomediastinum 0.776, consolidation 0.719, pneumonia 0.654, pleural_other 0.647, fracture 0.625, lung_lesion 0.557.
 
 ### pleural_other — calibration LOW-CONFIDENCE (user decision 2026-10-06)
 Kept as a finding, but its Platt calibrator and thresholds rest on only 47 positives each in calib and thresh (14 in val). Treat every pleural_other probability, band and metric as low-confidence.
 
-### Point 3 — ImaGenome side/region labels: explicit vs default (`v2/runs/20261006-1150_imagenome-explicit`)
+### Point 3 — ImaGenome side/region labels: explicit vs default (`runs/20261006-1150_imagenome-explicit`)
 A label is explicit if the report phrase itself states the side (left/right/bilateral/both/bibasilar…), or, for a region, the location (upper/lower/base/apex/hilar/lobe/costophrenic/… plus the side for a sided region). Otherwise it is ImaGenome's default assignment, which is now **masked**, never read as bilateral or all-regions-positive.
 
 | finding | positive images | side explicit | of explicit: bilateral | region pairs | region explicit |
@@ -81,17 +81,17 @@ A label is explicit if the report phrase itself states the side (left/right/bila
 | pneumothorax | 10,924 | 89.3 % | 9.6 % | 26,048 | 61.3 % |
 | support_devices | 87,103 | 65.9 % | 18.3 % | 331,024 | 28.0 % |
 
-KG change (`v2/kg/findings.yaml` v0.3): `lateralisable: false` for edema, cardiomegaly and enlarged_cardiomediastinum, so they get no side prediction. No other finding is near 100 % bilateral among explicit labels. New rule **P6**: the report states a side only for lateralisable findings with side-head confidence ≥ `side_min_confidence` (0.8); otherwise the finding is stated without a side. Tests: 37/37 pass (`v2/tests/`). The Stage 3 side head and the Stage 4 region classifier train on explicit labels only (`imagenome_side_explicit_v1.parquet`, `imagenome_region_explicit_v1.parquet`).
+KG change (`kg/findings.yaml` v0.3): `lateralisable: false` for edema, cardiomegaly and enlarged_cardiomediastinum, so they get no side prediction. No other finding is near 100 % bilateral among explicit labels. New rule **P6**: the report states a side only for lateralisable findings with side-head confidence ≥ `side_min_confidence` (0.8); otherwise the finding is stated without a side. Tests: 37/37 pass (`tests/`). The Stage 3 side head and the Stage 4 region classifier train on explicit labels only (`imagenome_side_explicit_v1.parquet`, `imagenome_region_explicit_v1.parquet`).
 Note: the side-word lexicon counts "lungs" as bilateral, which may inflate edema's explicit-bilateral share; edema is non-lateralisable anyway.
 
 ### GPU lane — checks and pilot (H100 job 37814480)
-- Step test and internet: OK (`v2/runs/*_gpu-step-test`); GPU node has internet.
+- Step test and internet: OK (`runs/*_gpu-step-test`); GPU node has internet.
 - CLEAR exposes patch tokens via `visual.backbone.forward_features()["x_norm_patchtokens"]`: DINOv2 ViT-B/14-reg, a 32×32 grid at 448 px, 4 register tokens excluded. **Preprocess = plain resize to 448×448 (bicubic): no crop and no padding, so 0 % of the image area is removed, but the aspect ratio is not preserved** (x and y scaled independently). Patch (i, j) covers original x ∈ [j·W/32, (j+1)·W/32), y ∈ [i·H/32, (i+1)·H/32).
-- CheXmask regions use the OriginalResolution masks, because in 2 of 8 images checked the Preprocessed masks disagree with them beyond the resize/pad mapping. Weights: `v2/data/features/regions/mimic_pilot_weights.npy` (`runs/20261006-1146_chexmask-weights-pilot`); full MIMIC weights running on CPU (`runs/20261006-1147_chexmask-weights-full`).
-- Pilot, 1,000 fit-split images (`v2/runs/20261006-1147_region-pilot`): global vector = cached embedding (cosine 1.00000 on 500 images); image sizes match metadata and CheXmask (0 mismatches). **Left/right check: same-side IoU > cross-side IoU in 100 % of images; cross-side IoU 0.000.** Grid IoU of ImaGenome lung box vs CheXmask lung: left median 0.38, right median 0.47, because the boxes are rectangles much larger than the lungs; 98.7 % of each CheXmask lung lies inside its ImaGenome box. Overlays: 10 PNGs in `overlays/`.
+- CheXmask regions use the OriginalResolution masks, because in 2 of 8 images checked the Preprocessed masks disagree with them beyond the resize/pad mapping. Weights: `data/features/regions/mimic_pilot_weights.npy` (`runs/20261006-1146_chexmask-weights-pilot`); full MIMIC weights running on CPU (`runs/20261006-1147_chexmask-weights-full`).
+- Pilot, 1,000 fit-split images (`runs/20261006-1147_region-pilot`): global vector = cached embedding (cosine 1.00000 on 500 images); image sizes match metadata and CheXmask (0 mismatches). **Left/right check: same-side IoU > cross-side IoU in 100 % of images; cross-side IoU 0.000.** Grid IoU of ImaGenome lung box vs CheXmask lung: left median 0.38, right median 0.47, because the boxes are rectangles much larger than the lungs; 98.7 % of each CheXmask lung lies inside its ImaGenome box. Overlays: 10 PNGs in `overlays/`.
 - Throughput: about 100 img/s after startup (the logged 12 img/s includes a 1.2 min model/worker start). Full pass 218,187 images ≈ 40 min. **Storage 70.7 kB/image = 15.4 GB for the full pass (> 15 GB limit), so this needs a decision before the full pass.**
 
-### Item 5 — Stage 1 baseline: linear probe on CLEAR embeddings (`v2/runs/20261006-1154_stage1`, 2.8 min). Seen by backbone.
+### Item 5 — Stage 1 baseline: linear probe on CLEAR embeddings (`runs/20261006-1154_stage1`, 2.8 min). Seen by backbone.
 Fit = train split; Platt on calib; threshold candidates on thresh; metrics on **val** (n ≈ 1,580–1,730 per finding). C chosen on a 5 % inner patient holdout of train.
 
 | finding | val AUROC | AUPRC | ECE | val pos |
@@ -114,13 +114,13 @@ Fit = train split; Platt on calib; threshold candidates on thresh; metrics on **
 Hierarchy violations of the independent marginals on val (P(child) > P(parent), of 1,733): cardiomegaly > enlarged_cardiomediastinum 240, pneumonia > consolidation 189, atelectasis > lung_opacity 25, consolidation > lung_opacity 15, edema > lung_opacity 10, lung_lesion > lung_opacity 0. Stage 3 must bring these to 0.
 The first run (`20261006-1150_stage1`, same numbers) produced degenerate PPV candidates (a target "met" by flagging one study). Fixed: a precision/NPV target now needs ≥ 10 true positives/negatives. Threshold table: `threshold_candidates_thresh_split.csv` in the run dir. **Awaiting the user's choice.**
 
-### Item 12 — sample run of the Stage 6/7 template (`v2/runs/20261006-1157_sample-reports`, PROVISIONAL thresholds)
+### Item 12 — sample run of the Stage 6/7 template (`runs/20261006-1157_sample-reports`, PROVISIONAL thresholds)
 Provisional rule: present = PPV ≥ 0.8 (else 0.7), absent = NPV ≥ 0.98. D4 empty-band check: the first attempt FAILED correctly (atelectasis had an empty present band under the degenerate candidate); it PASSES after the fix. Abstained under the provisional rule: fracture, lung_lesion, pleural_other (no PPV ≥ 0.7 with ≥ 10 TPs). 20 val belief graphs + reports written (`sample_reports.json`).
 Observed: the uncertain band is very wide (e.g. consolidation 1,261/1,733 val studies uncertain, atelectasis 1,271, cardiomegaly 1,195), so reports read as long lists of "possible …". With three findings abstaining, no_finding can never be true. Cosmetic bug: "{Side}" phrases start lower-case when no side is stated ("pneumonia is possible…"); to fix.
 
 ## 2026-10-06 user decisions: four bands, any_abnormality root, 36 regions
 
-### Four bands (`v2/nesy/thresholds.py`, `v2/nesy/belief.py`); refitted on thresh for each stage's model, ≥ 10 TPs per PPV tier
+### Four bands (`nesy/thresholds.py`, `nesy/belief.py`); refitted on thresh for each stage's model, ≥ 10 TPs per PPV tier
 present PPV ≥ 0.7 · possible PPV ≥ 0.4 and below present · absent ≤ 5 % of positives missed (pneumothorax ≤ 2 %) · silent otherwise (not mentioned). Absent findings are stated only if on the pertinent-negatives list.
 Three implementation decisions, found by running the samples (each with a test):
 1. **Absent has priority over possible where they overlap.** For common findings (prevalence > 0.4: lung_opacity, pleural_effusion, support_devices), "PPV ≥ 0.4" is met by flagging everything, so the possible threshold falls to ≈ 0.01–0.04, below the absent threshold. Dropping the absent tier there left every study with at least "possible lung opacity".
@@ -129,13 +129,13 @@ Three implementation decisions, found by running the samples (each with a test):
 Also: P1 now omits a parent when a child is stated with at least the same certainty (possible pneumonia no longer prints "Possible lung opacity. Possible consolidation." as well), and sentence capitalisation is fixed. Tests: **42/42 pass**.
 
 ### any_abnormality root (labels v2, KG v0.4)
-`v2/data/labels/labels_v2.parquet` (`v2/runs/20261006-1218_labels-v2`): any_abnormality = 1 for 138,707 studies, 0 for 81,912, masked 7,216; (any_abnormality = 0) agrees with CheXpert "No Finding" = 1 on 97.1 % where defined. Hierarchy violations after closure: 0. Compared with the old derived no_finding, 469 more studies are negative instead of masked: an uncertain sub-finding under an explicitly negated parent does not mask the root, following the user's rule that only a *blank* parent is masked. The R1 count for this KG-only node (227,827) is an artefact: every root label starts blank.
+`data/labels/labels_v2.parquet` (`runs/20261006-1218_labels-v2`): any_abnormality = 1 for 138,707 studies, 0 for 81,912, masked 7,216; (any_abnormality = 0) agrees with CheXpert "No Finding" = 1 on 97.1 % where defined. Hierarchy violations after closure: 0. Compared with the old derived no_finding, 469 more studies are negative instead of masked: an uncertain sub-finding under an explicitly negated parent does not mask the root, following the user's rule that only a *blank* parent is masked. The R1 count for this KG-only node (227,827) is an artefact: every root label starts blank.
 KG: is_a edges isa_101–106 make the root the parent of every top-level pathology; support_devices stays outside. "No acute cardiopulmonary abnormality." is reported iff the root is in its absent band (rule D3/P7).
 
-### Stage 1 v2 (`v2/runs/20261006-1218_stage1-v2`; same probe, now also predicting any_abnormality)
+### Stage 1 v2 (`runs/20261006-1218_stage1-v2`; same probe, now also predicting any_abnormality)
 any_abnormality val AUROC 0.882, AUPRC 0.908, ECE 0.032. The 13 findings are unchanged from Stage 1 (macro AUROC 0.820).
 
-### Sample reports with the four bands (`v2/runs/20261006-1230_sample-reports-v5`, Stage 1 v2 model, 20 val studies)
+### Sample reports with the four bands (`runs/20261006-1230_sample-reports-v5`, Stage 1 v2 model, 20 val studies)
 7 of 20 are reported "No acute cardiopulmonary abnormality": 5 are labelled normal, 2 are not (one labelled cardiomegaly + enlarged cardiomediastinum, one labelled lung_opacity).
 Val band shares: any_abnormality absent 22 %; lung_opacity present 67 % / possible 7 % / absent 26 %; pleural_effusion 33/19/0 silent/48 absent; atelectasis 2/46/21/31; cardiomegaly 1/41/23/35; consolidation 0/16/59/25; fracture, lung_lesion and pleural_other never present or possible (silent 60–79 %, absent 21–40 %).
 Observed: present/possible are generous for common findings (lung_opacity present in 67 % of val, label prevalence 49 %) because PPV ≥ 0.7 sits at a low threshold when prevalence is high.
@@ -149,7 +149,7 @@ Observed: present/possible are generous for common findings (lung_opacity presen
 ### Concept selection (item 7), not yet approved
 - v1 (`20261006-1157_concepts`) and v2 (`20261006-1219_concepts-v2`) were rejected on review: temporal wording, "simulates widening" (meaning NOT widened), compound concepts, patient-specific phrasing, long sentences. v3 (`20261006-1236_concepts-v3`) is running: 2–4 words, extended exclusions, single-finding concepts only, normal concepts scored against the absence of any_abnormality.
 
-### any_abnormality absent band on the full val set (`v2/runs/20261006-1239_abnormal-absent-check`, Stage 1 v2 model, 1,733 val studies)
+### any_abnormality absent band on the full val set (`runs/20261006-1239_abnormal-absent-check`, Stage 1 v2 model, 1,733 val studies)
 Root absent threshold refitted on thresh for each rule. "Final" = the "no acute abnormality" call after D2 (stated children lift the root), with the four-band thresholds of the other findings.
 
 | rule (abnormal studies missed on thresh) | threshold | view | val studies | share of val | with ≥ 1 positive pathology label |
@@ -165,7 +165,7 @@ Positive labels among final-call studies (studies per finding; not exclusive, pa
 - ≤ 1 %: lung_opacity 6, enlarged_cardiomediastinum 2, fracture 2, lung_lesion 2, pneumonia 1, consolidation 1, atelectasis 1, cardiomegaly 1, pleural_other 1.
 Two different rates: the rule controls the share of abnormal studies missed (val, final call: 32 / 1,050 = 3.0 % at the 5 % rule, 2.0 % at 2 %, 1.0 % at 1 %). The "with ≥ 1 positive" column is the share of normal calls that are abnormal (1 − NPV): 9.0 %, 8.5 %, 5.9 %.
 
-### Normal-call rule with critical lists — Stage 1 v2, PROVISIONAL (`v2/runs/20261006-1250_normal-call-stage1`)
+### Normal-call rule with critical lists — Stage 1 v2, PROVISIONAL (`runs/20261006-1250_normal-call-stage1`)
 KG v0.5: rule N1 `normal_call` (status needs-radiologist-review; active list A provisionally). "No acute cardiopulmonary abnormality" is written only if the root is absent AND every critical finding is in its own absent band. Tests 43/43. Root thresholds refitted on thresh: 5 % → 0.260, 2 % → 0.137. Critical findings' own absent bands: pneumothorax ≤ 2 % missed, others ≤ 5 %. **Platt scaling was fitted on calib, so calib probabilities are in-sample for calibration; the thresholds come from thresh.**
 
 | rule | split | normal calls | share of split | calls with ≥ 1 positive | abnormal missed / all abnormal |
@@ -195,20 +195,20 @@ Missed findings by type, pooled val+calib (studies per finding; parents include 
 Reading: the critical lists cost 22 % (A) and 36 % (B) of the root-5 % normal calls but barely change the effusion/pneumothorax misses they target (7→6→5 and 3→2→2 pooled). Those missed studies already sit in the critical finding's own absent band, so requiring that band cannot catch them; the lists mostly remove lung-opacity/consolidation-type misses. List B reaches the 2 % rule's call rate (13.9 % vs 13.8 %) with a slightly higher share of abnormal calls (10.5 % vs 8.3 %). Calib shows the same ordering as val. To repeat for the Stage 3 model.
 
 ### NEGATIVE RESULT — critical lists for the normal call (decision 2026-10-06)
-Lists A (pneumothorax, effusion) and B (+ edema, consolidation) cost 22 % / 36 % of normal calls but barely changed the misses they target (pooled effusion 7→6→5, pneumothorax 3→2→2), because those studies already sit in the critical finding's own absent band. Rule N1 is now **inactive** (`critical: []` in `v2/kg/findings.yaml` v0.5; code, candidates and tests kept, 44/44 pass). The root alone decides "No acute cardiopulmonary abnormality". 5 % and 2 % root rules to be compared on the Stage 3 model.
+Lists A (pneumothorax, effusion) and B (+ edema, consolidation) cost 22 % / 36 % of normal calls but barely changed the misses they target (pooled effusion 7→6→5, pneumothorax 3→2→2), because those studies already sit in the critical finding's own absent band. Rule N1 is now **inactive** (`critical: []` in `kg/findings.yaml` v0.5; code, candidates and tests kept, 44/44 pass). The root alone decides "No acute cardiopulmonary abnormality". 5 % and 2 % root rules to be compared on the Stage 3 model.
 
 ### Infrastructure: np.memmap header loss on cephfs (2026-10-06)
-`np.lib.format.open_memmap(mode="w+")` writes the 128-byte header with a buffered write, then maps the file from offset 0. On cephfs the mapping read the header page before the write landed, and the final flush zeroed the header. This happened to `mimic_full_weights.npy` (2.0 GB) after a normal finish, and to three region-feature files. Weights repaired by rewriting the deterministic header; the data verified exactly against the independent pilot run (1,000/1,000 images identical). New helper `v2/nesy/safe_memmap.py` (create → close → fsync header → reopen; re-assert the header on close), used by the weights script; region features now use sequential shard files.
+`np.lib.format.open_memmap(mode="w+")` writes the 128-byte header with a buffered write, then maps the file from offset 0. On cephfs the mapping read the header page before the write landed, and the final flush zeroed the header. This happened to `mimic_full_weights.npy` (2.0 GB) after a normal finish, and to three region-feature files. Weights repaired by rewriting the deterministic header; the data verified exactly against the independent pilot run (1,000/1,000 images identical). New helper `nesy/safe_memmap.py` (create → close → fsync header → reopen; re-assert the header on close), used by the weights script; region features now use sequential shard files.
 
-### Concept lists — final procedure (`v2/runs/20261006-1307_concepts-final`)
-v3 filters (2–4 words, temporal/negation/hedge/spurious exclusions, single-finding concepts, fit split only) minus the 17 flagged concepts ("lower lobes collapse" kept), refilled by rank, near-duplicates (text cosine > 0.92) removed, AUROC ≥ 0.6; each finding led by its plain term where the bank has one passing the filters (1-word terms allowed). Saved with finding and individual AUROC (fit split, 12k sample): `v2/data/concepts/concepts_final_k6.csv` (84) and `concepts_final_k12.csv` (166; enlarged_cardiomediastinum has only 10 above AUROC 0.6).
+### Concept lists — final procedure (`runs/20261006-1307_concepts-final`)
+v3 filters (2–4 words, temporal/negation/hedge/spurious exclusions, single-finding concepts, fit split only) minus the 17 flagged concepts ("lower lobes collapse" kept), refilled by rank, near-duplicates (text cosine > 0.92) removed, AUROC ≥ 0.6; each finding led by its plain term where the bank has one passing the filters (1-word terms allowed). Saved with finding and individual AUROC (fit split, 12k sample): `data/concepts/concepts_final_k6.csv` (84) and `concepts_final_k12.csv` (166; enlarged_cardiomediastinum has only 10 above AUROC 0.6).
 - Plain terms found: opacity (AUROC 0.66), atelectasis (0.71), consolidation (0.65), pneumonia (0.60), pulmonary edema (0.87), lung nodule (0.54), **widened mediastinum (0.41, below chance)**, cardiomegaly (0.72), pleural effusion (0.88), pleural thickening (0.60), pneumothorax (0.84), rib fracture (0.59), normal chest radiograph (0.85, normal group). **No plain term: support_devices** ("support devices", "tubes and lines" etc. are not in the bank or fail the filters).
 - Refill picked a few concepts with the same problems as the flagged ones (not excluded, because they were not on the reviewed list): "associated substantial atelectasis", "multiple pleural masses" (lung_lesion), "ongoing slight mediastinal enlargement" (temporal), "some effusion". For the next review.
 
-### Stage 2 — + CheXmask side/CTR features (`v2/runs/20261006-1236_stage2`, baseline Stage 1 v2). Seen by backbone.
+### Stage 2 — + CheXmask side/CTR features (`runs/20261006-1236_stage2`, baseline Stage 1 v2). Seen by backbone.
 Val AUROC up on all 14: macro +0.0053, AUPRC +0.011, ECE +0.0005. Biggest: lung_lesion +0.017, consolidation +0.010, pneumonia +0.008, edema +0.007 (AUPRC +0.043), fracture +0.007 (AUPRC 0.023→0.075). **Cardiomegaly only +0.003 (0.816→0.819)**, so the stage's "better cardiomegaly discrimination" criterion is met only marginally. The side signal is not yet evaluated separately; it enters Stage 3's side head. (An earlier run, `20261006-1209_stage2`, FAILED because the KG changed mid-run.)
 
-### Stage 3 — factorised head on named features (`v2/runs/20261006-1310_stage3-k6`, `v2/runs/20261006-1314_stage3-k12`). Seen by backbone.
+### Stage 3 — factorised head on named features (`runs/20261006-1310_stage3-k6`, `runs/20261006-1314_stage3-k12`). Seen by backbone.
 Features: concept scores (k = 6: 84, k = 12: 166) + 17 CheXmask features. P(any_abnormality) × P(child | parent) down the is_a tree, each conditional Platt-calibrated on calib.
 - **Hierarchy violations on val: 0 for both** (all 12 is_a edges), against 0–240 per edge for the independent Stage 1 probe.
 - Macro val AUROC: probe 0.824 → k6 0.825 (gap +0.0006), k12 0.826 (gap +0.0021). **Named features match the 768-d embedding probe.**
@@ -216,7 +216,7 @@ Features: concept scores (k = 6: 84, k = 12: 166) + 17 CheXmask features. P(any_
 - Per finding (probe → k6 / k12 AUROC): any_abnormality 0.882→0.878/0.879; lung_opacity 0.854→0.850/0.852; atelectasis 0.827→0.818/0.821; consolidation 0.798→0.795/0.797; pneumonia 0.763→0.763/0.764; edema 0.906→0.908/0.909; lung_lesion 0.711→0.723/0.734; ECM 0.814→0.817/0.817; cardiomegaly 0.816→0.821/0.821; effusion 0.917→0.917/0.917; pleural_other 0.744→0.751/0.761; pneumothorax 0.883→0.889/0.887; fracture 0.694→0.695/0.682; support_devices 0.927→0.921/0.925.
 - Side head (explicit labels only; val accuracy vs majority-class rate): pneumothorax 0.78 vs 0.53, support_devices 0.74–0.75 vs 0.54, lung_opacity 0.72–0.73 vs 0.60, effusion 0.73 vs 0.51, consolidation 0.68–0.70 vs 0.35, atelectasis 0.68 vs 0.50, pneumonia 0.60–0.63 vs 0.36; lung_lesion 0.52 and pleural_other 0.48–0.49 are near chance.
 
-### Normal-call rule on Stage 3, PROVISIONAL (`v2/runs/20261006-1314_normal-call-stage3-k6`, `…1320_normal-call-stage3-k12`)
+### Normal-call rule on Stage 3, PROVISIONAL (`runs/20261006-1314_normal-call-stage3-k6`, `…1320_normal-call-stage3-k12`)
 | model | rule | split | normal calls | share | calls with ≥ 1 positive | abnormal missed |
 |---|---|---|---|---|---|---|
 | k6 | root 5 % | val / calib / pooled | 361 / 1,415 / 1,776 | 20.8 / 22.5 / 22.2 % | 9.1 / 12.2 / 11.6 % | 3.1 / 4.6 / 4.3 % |
@@ -227,10 +227,10 @@ Missed findings by type are in each run's `normal_call_missed_by_type.csv`. Cali
 
 ## 2026-10-06 decisions: root normal rule at 2 %; concept list k = 6 pruned
 
-### Concept list pruned (`v2/data/concepts/concepts_final_k6_pruned.csv`, 77 concepts)
+### Concept list pruned (`data/concepts/concepts_final_k6_pruned.csv`, 77 concepts)
 From k = 6, removed own-AUROC < 0.60 (plain terms "lung nodule" 0.54, "widened mediastinum" 0.41, "rib fracture" 0.59) and the weak refills ("associated substantial atelectasis", "multiple pleural masses", "ongoing slight mediastinal enlargement", "some effusion"). Not refilled. Per finding: 6 for 9 findings, 5 for atelectasis, pleural_effusion and fracture, 4 for lung_lesion and enlarged_cardiomediastinum. **No finding has fewer than 3.**
 
-### Stage 3 on the pruned list (`v2/runs/20261006-1327_stage3-k6-pruned`; 94 named features: 77 concepts + 17 CheXmask)
+### Stage 3 on the pruned list (`runs/20261006-1327_stage3-k6-pruned`; 94 named features: 77 concepts + 17 CheXmask)
 Hierarchy violations on val: **0**. Macro val AUROC 0.824 (S1 0.824, S2 0.829); macro ECE 0.025 (S1 0.023, S2 0.023).
 
 | finding | S1 emb | S2 emb+CheXmask | S3 pruned | S3−S2 | S3−S1 | ECE S1 / S2 / S3 |
@@ -250,13 +250,13 @@ Hierarchy violations on val: **0**. Macro val AUROC 0.824 (S1 0.824, S2 0.829); 
 | fracture | 0.694 | 0.701 | 0.692 | −0.008 | −0.001 | .007/.008/.008 |
 | support_devices | 0.927 | 0.928 | 0.921 | −0.007 | −0.006 | .028/.024/.040 |
 
-### Patient-level bootstrap on val, 2,000 resamples (`v2/runs/20261006-1330_bootstrap-s123`; 95 % percentile CIs)
+### Patient-level bootstrap on val, 2,000 resamples (`runs/20261006-1330_bootstrap-s123`; 95 % percentile CIs)
 - **S2 − S1 macro AUROC +0.0053 [+0.0002, +0.0100]: excludes zero.** Per finding excludes zero: lung_opacity, consolidation, pneumonia, edema, pleural_effusion (all positive). Macro ECE +0.0005 [−0.0028, +0.0028]: n.s.
 - S3 − S1 macro AUROC +0.0003 [−0.0082, +0.0073]: n.s.; macro ECE +0.0026 [−0.0005, +0.0060]: n.s. Per finding excludes zero (all worse for S3): any_abnormality −0.004, lung_opacity −0.005, atelectasis −0.009, support_devices −0.006; ECE pleural_other +0.002.
 - S3 − S2 macro AUROC −0.0049 [−0.0114, +0.0007]: n.s.; macro ECE +0.0021 [−0.0010, +0.0062]: n.s. Per finding excludes zero (all worse for S3): any_abnormality −0.006, lung_opacity −0.008, atelectasis −0.011, consolidation −0.013, support_devices −0.007; ECE consolidation +0.010, pleural_other +0.001.
 - **Reading:** Stage 2 beats Stage 1 (small but real). Stage 3 is not distinguishable from Stage 1 overall. Against the like-for-like Stage 2 it is lower on 5 findings with CIs excluding zero, but not on the macro mean. Stage 3's named metric, hierarchy violations, goes from 240 (cardiomegaly > ECM) and 189 (pneumonia > consolidation) to 0. The cost of interpretability versus Stage 2 is about −0.005 macro AUROC, up to −0.013 for consolidation.
 
-### Cardiomegaly: CTR alone (`v2/runs/20261006-1327_ctr-auroc`; no fitting, QC-passed CheXmask only)
+### Cardiomegaly: CTR alone (`runs/20261006-1327_ctr-auroc`; no fitting, QC-passed CheXmask only)
 | split | view | n | positives | AUROC ctr | AUROC ctr_maxrow | median CTR pos / neg |
 |---|---|---|---|---|---|---|
 | val | PA | 641 | 71 | **0.850** | 0.839 | 0.560 / 0.482 |
@@ -266,14 +266,14 @@ Hierarchy violations on val: **0**. Macro val AUROC 0.824 (S1 0.824, S2 0.829); 
 | train | AP | 104,202 | 27,198 | 0.680 | 0.678 | 0.569 / 0.532 |
 CTR alone (0.850 val PA) beats the embedding probe on PA; on AP it is weak (0.66, magnification). AP is 60 % of studies and 80 % of val cardiomegaly positives, so the pooled gain from adding CTR is small (+0.003). It suggests a view-specific CTR term (already partly present as ctr×AP) or a PA-only CTR rule.
 
-### Normal call, root 2 % (chosen) — Stage 3 pruned (`v2/runs/20261006-1330_normal-call-stage3-pruned`)
+### Normal call, root 2 % (chosen) — Stage 3 pruned (`runs/20261006-1330_normal-call-stage3-pruned`)
 | rule | val calls / share / with positive / abnormal missed | calib | pooled |
 |---|---|---|---|
 | root 2 % | 252 / 14.5 % / 7.5 % (19) / 1.8 % | 902 / 14.4 % / 8.0 % / 1.9 % | 1,154 / 14.4 % / 7.9 % / 1.9 % |
 | root 5 % (reference) | 363 / 20.9 % / 9.1 % / 3.1 % | 1,416 / 22.5 % / 11.9 % / 4.5 % | 1,779 / 22.2 % / 11.4 % / 4.2 % |
-Missed at 2 %, pooled: lung_opacity 54, ECM 19, consolidation 19, pneumonia 18, cardiomegaly 13, lung_lesion 13, fracture 12, atelectasis 11, effusion 3, pleural_other 3, edema 2, pneumothorax 2. Root threshold now 2 % in `v2/nesy/thresholds.py`.
+Missed at 2 %, pooled: lung_opacity 54, ECM 19, consolidation 19, pneumonia 18, cardiomegaly 13, lung_lesion 13, fracture 12, atelectasis 11, effusion 3, pleural_other 3, edema 2, pneumothorax 2. Root threshold now 2 % in `nesy/thresholds.py`.
 
-### Sample reports with belief graphs — Stage 3 pruned (`v2/runs/*_sample-reports-stage3-pruned-v2`, 80 val studies)
+### Sample reports with belief graphs — Stage 3 pruned (`runs/*_sample-reports-stage3-pruned-v2`, 80 val studies)
 Three examples (normal, single, several) with full node tables and audit in the run log. Fixes made on review: the side head is attached only to stated (present/possible) findings, the audit names it ("side head P(side|finding), p=…"), and the inactive N1 rule is no longer cited on D3. Tests 45/45. In the "several" example, effusion (p 0.46) and support devices (p 0.39) are stated present but not labelled positive.
 
 ## 2026-10-06 (afternoon): Stage 3 kept as base; bands v2; CLEAR preprocessing check
@@ -285,9 +285,9 @@ The CLEAR repo (`scripts/run_preprocess.py` → `src/clear/data_processing.py: i
 - **PadChest intensity:** 16-bit PNGs read with `cv2.imread` (colour mode), which converts to 8-bit by dropping the low byte (divide by 256), with no percentile windowing. Ours: 0.5–99.5 percentile window.
 External caching waits for the user's decision.
 
-### Bands v2 (calibrated probability; `v2/nesy/thresholds.py`)
+### Bands v2 (calibrated probability; `nesy/thresholds.py`)
 present p ≥ 0.70 · possible 0.40 ≤ p < 0.70 · absent as before (≤ 5 % positives missed; pneumothorax ≤ 2 %; root ≤ 2 %) with priority over possible · silent otherwise.
-Band report on Stage 3 pruned (`v2/runs/20261006-1351_band-report-s3`; each finding's own band, before D2):
+Band report on Stage 3 pruned (`runs/20261006-1351_band-report-s3`; each finding's own band, before D2):
 
 | finding (val) | pos | max p | present / possible / silent / absent | present: n, precision, sensitivity | possible: n, precision, sensitivity |
 |---|---|---|---|---|---|
@@ -307,17 +307,17 @@ Band report on Stage 3 pruned (`v2/runs/20261006-1351_band-report-s3`; each find
 | any_abnormality (root, absent tier only) | 1,050 | | absent 14.5 % (19 positives) | | |
 Pooled val+calib: present precision lung_opacity 0.83, effusion 0.81, devices 0.81, pneumothorax 0.71 (n 105), edema 0.73, atelectasis 0.73; possible precision 0.47–0.63. **Present/possible precision is close to the calibrated probability range**, as intended. Fracture, lung_lesion and pleural_other never reach 0.40, so they are only ever absent or silent. Pneumonia, consolidation, cardiomegaly and enlarged_cardiomediastinum rarely reach 0.70 (present sensitivity 0–4 %).
 
-### Sample reports, bands v2 (`v2/runs/20261006-1351_sample-reports-bands-v2`, Stage 3 pruned)
+### Sample reports, bands v2 (`runs/20261006-1351_sample-reports-bands-v2`, Stage 3 pruned)
 - Normal (57231052, PA): all absent; "No acute cardiopulmonary abnormality."; labels agree.
 - Single (50698281, AP): "Possible support device" (p 0.57). Labels: lung_opacity positive (p 0.26, silent: a miss), devices negative.
 - Several (58052191, AP): present lung opacity (0.89), effusion (0.71), devices (0.80); possible atelectasis, edema, borderline heart. Labels: lung_opacity, atelectasis, edema, effusion, devices positive, so every present call is correct; possible cardiomegaly/ECM are labelled negative.
 
-### NEGATIVE RESULT — heart ratio used only on PA images (`v2/runs/20261006-1351_stage3-pa-ctr`, bootstrap `…1438_bootstrap-s3-pa`)
+### NEGATIVE RESULT — heart ratio used only on PA images (`runs/20261006-1351_stage3-pa-ctr`, bootstrap `…1438_bootstrap-s3-pa`)
 Stage 3 pruned with CheXmask CTR / CTR-maxrow / heart width entering only as ×PA (feature group `chexmask_pa`), against the current Stage 3 (CTR + CTR×AP), val:
 - cardiomegaly 0.821 → 0.819, Δ −0.0018 [−0.0034, −0.0000]; enlarged_cardiomediastinum 0.817 → 0.815, Δ −0.0019 [−0.0036, −0.0002]. Both CIs exclude zero, both slightly worse. ECE differences n.s. Macro AUROC Δ −0.0002 (n.s.). Hierarchy violations 0.
 - Reason: the existing pair (ctr, ctr×AP) already lets PA and AP have different slopes. Removing the AP heart-ratio signal loses a little information instead of adding any. Stage 3 keeps the current CheXmask features.
 
-### Stages 1–3 by view (val, `v2/runs/20261006-1440_view-metrics`) — S2 is the accuracy reference
+### Stages 1–3 by view (val, `runs/20261006-1440_view-metrics`) — S2 is the accuracy reference
 Val: AP about 1,030 studies, PA about 645. Macro AUROC AP: S1 0.799, S2 0.808, S3 0.804 · PA: S1 0.852, S2 0.856, S3 0.850. Macro ECE AP: 0.031 / 0.031 / 0.035 · PA: 0.024 / 0.024 / 0.025.
 | finding | AP S1 / S2 / S3 | PA S1 / S2 / S3 | pos AP / PA |
 |---|---|---|---|
@@ -337,17 +337,17 @@ Val: AP about 1,030 studies, PA about 645. Macro AUROC AP: S1 0.799, S2 0.808, S
 | support_devices | 0.890 / 0.892 / 0.883 | 0.887 / 0.881 / 0.873 | 502 / 48 |
 Every model is much better on PA than AP: macro gap about 0.05, any_abnormality 0.90 vs 0.81, cardiomegaly about 0.90 vs 0.75. On PA the Stage 3 cardiomegaly AUROC (0.899) already exceeds CTR alone (0.850); AP cardiomegaly (0.75) is the weak spot. Fracture, pleural_other and the PA edema/devices cells rest on ≤ 25 positives and should not be read.
 
-### GPU region-feature pass — DONE (`v2/runs/20261006-1304_region-full`, H100, stretch geometry)
-218,187 MIMIC images (every one-frontal-per-study image in all splits, plus 48 extra MS-CXR/gold images) in 124.8 min (29.1 img/s, limited by JPEG decoding: 5,243 s waiting for data vs 1,473 s GPU). Per image, float16: global embedding + 36 ImaGenome-box vectors + 9 CheXmask-region vectors. 27 shards, 15 GB, in `v2/data/features/regions/mimic_full_shards/`. Image size vs metadata/CheXmask mismatches: 0. Global vector = cached store (cosine 1.00000 on 500). **Free space after the pass: 30.3 GB.**
+### GPU region-feature pass — DONE (`runs/20261006-1304_region-full`, H100, stretch geometry)
+218,187 MIMIC images (every one-frontal-per-study image in all splits, plus 48 extra MS-CXR/gold images) in 124.8 min (29.1 img/s, limited by JPEG decoding: 5,243 s waiting for data vs 1,473 s GPU). Per image, float16: global embedding + 36 ImaGenome-box vectors + 9 CheXmask-region vectors. 27 shards, 15 GB, in `data/features/regions/mimic_full_shards/`. Image size vs metadata/CheXmask mismatches: 0. Global vector = cached store (cosine 1.00000 on 500). **Free space after the pass: 30.3 GB.**
 Left/right check (ImaGenome lung box vs CheXmask lung, same side > cross side for both lungs): 99.9 % of 217,041 images. Of the 242 failures, 7 are fully swapped (likely genuinely flipped images or mislabelled masks); 235 have poor alignment on both sides. List: `flip_check_failures.csv` in the run dir, for review.
 
-### Stretch vs letterbox (CLEAR authors' preprocessing), no training — MIXED, awaiting user (`v2/runs/20261006-1709_letterbox-test`)
+### Stretch vs letterbox (CLEAR authors' preprocessing), no training — MIXED, awaiting user (`runs/20261006-1709_letterbox-test`)
 Full val (1,733 studies, 500 patients); letterbox = grey, aspect-preserving LANCZOS to longest side 448, zero-padded to 448². Embedding agreement letterbox vs stretch: cosine median 0.964, min 0.487 (stretch vs cached store 0.99999). Patient bootstrap, 2,000 resamples, letterbox − stretch:
 - **77 approved concepts, own-finding AUROC: mean 0.7765 → 0.7792, Δ +0.0027 [−0.0018, +0.0072]; does NOT exclude zero.** Per concept: 13 better (CI > 0), 3 worse, 61 unclear. Cardiomegaly concepts all 6 better (mean +0.021), pneumonia 3 better (+0.015); enlarged_cardiomediastinum 3 of 4 worse (mean −0.017).
 - **Zero-shot (CLEAR's own softmax over "{}" / "no {}"): macro 0.7369 → 0.7457, Δ +0.0088 [+0.0015, +0.0158]; excludes zero.** Per finding: cardiomegaly +0.027 [+0.017, +0.036], enlarged_cardiomediastinum +0.021 [+0.010, +0.032], support_devices +0.014 [+0.008, +0.022] better; pleural_other −0.038 [−0.055, −0.017] worse; the other 9 unclear.
 - Decision rule ("better on average with an interval excluding zero"): met for zero-shot, not for the concept test, so **not clearly met**. No switch started; waiting for the user. The stretch features stay in use. Heart-size findings gain the most, consistent with stretching distorting the cardiothoracic proportions.
 
-### Stage 4 — region classifier (A2) on stretch features (`v2/runs/20261006-1709_stage4-regions`). Seen by backbone.
+### Stage 4 — region classifier (A2) on stretch features (`runs/20261006-1709_stage4-regions`). Seen by backbone.
 Explicit ImaGenome region labels only (default assignments masked); negatives = all regions of studies negative for the finding. Per finding and region set, one logistic regression on [pooled vector, region one-hot], fit split; GPU L-BFGS.
 - Region-level val AUROC is 0.91–0.995 (set A) and 0.75–0.98 (set B). These are **flattering**, because every region of a negative study is an easy negative.
 - Image-level val AUROC (max over regions), against Stage 1 / Stage 2: lung_opacity A 0.849 / B 0.846 (S1 0.854, S2 0.858); atelectasis 0.822 / 0.822 (0.827, 0.829); consolidation 0.786 / 0.789 (0.798, 0.808); pneumonia 0.759 / 0.761; edema 0.902 / 0.903; lung_lesion 0.735 / 0.727 (0.711, 0.727); ECM 0.746 / – ; cardiomegaly 0.794 / 0.771 (0.816, 0.819); effusion 0.915 / 0.914; pleural_other 0.693 / 0.720; pneumothorax 0.881 / 0.879; fracture A 0.721 (280 positive regions; val region AUROC undefined) / –.
@@ -370,10 +370,10 @@ Highest-scoring anatomically relevant region for the phrase's finding; hit = tha
 
 **Caveats, so these are not over-read:** the overlap rule is lenient. Large regions (a whole lung) overlap almost any box on their side, and cardiomegaly's heart regions always overlap the heart box (1.00 is trivial). Side correctness is the more informative number (chance about 0.5 for one-sided boxes). Still to do: chance baselines (random relevant region; "always the larger lung"), a stricter overlap criterion (IoU ≥ 0.1 or box centre inside the region), and restricting to the smaller regions (zones/thirds). The two region sets localise equally well.
 
-### Stage 5 (provisional) — embedding probe + neighbour label fractions, against Stage 1 (`v2/runs/20261006-1304_stage5-nb5`, `…1331_stage5-nb10`, `…1354_stage5-nb25`)
+### Stage 5 (provisional) — embedding probe + neighbour label fractions, against Stage 1 (`runs/20261006-1304_stage5-nb5`, `…1331_stage5-nb10`, `…1354_stage5-nb25`)
 Macro val ΔAUROC vs Stage 1: k = 5 +0.0048, **k = 10 +0.0049**, k = 25 +0.0036 (ΔAUPRC +0.009 / +0.008 / +0.009; ΔECE +0.001 or less). k = 10, per finding: pneumonia +0.020, lung_lesion +0.018, pleural_other +0.009, consolidation +0.007, edema +0.005, lung_opacity +0.004; fracture −0.006. These runs add the neighbours to the **embedding probe** (Stage 1). The ablation on the Stage 3 base (as the user decided) and with bootstrap CIs is still to do.
 
-### Visual examples (`v2/outputs/visual_examples/`, run `v2/runs/20261006-1805_visual-examples`, CPU, no metrics)
+### Visual examples (`outputs/visual_examples/`, run `runs/20261006-1805_visual-examples`, CPU, no metrics)
 2 examples each: MIMIC (val, one PA, one AP, ≥ 2 positive findings), MS-CXR (not official test, different findings), VinDr (train folder, ≥ 1 box), PadChest-GR (≥ 1 boxed finding). Each has one PNG (5–7 panels) and a .txt; README.md lists the files and panels.
 Visual review (by eye, all 8): left/right correct everywhere (patient-left lung on the image right; VinDr "L" markers agree). CheXmask masks fit the lungs and heart in 6 of 8. Problems:
 - `ms_cxr_c9638d78…` (AP, low volumes, rotated): CheXmask quality 0.696 (< 0.7, fails QC). The right-lung outline is shrunken and the heart outline overlaps the right lung, so the masks do not fit. Its CTR and region features should not be trusted (QC already flags it).
@@ -381,9 +381,9 @@ Visual review (by eye, all 8): left/right correct everywhere (patient-left lung 
 - Chest ImaGenome boxes for trachea, spine and abdomen extend past the image edge in 2 of 4 MIMIC/MS-CXR images (automatic check). These are silver-standard boxes; harmless for pooling (clipped to the grid).
 - MS-CXR Stage 4 panel: for the bibasilar atelectasis example, the top region (right lower lung zone) overlaps one of the two radiologist boxes; for the cardiomegaly example, the cardiac-silhouette box contains the radiologist's heart box but is larger.
 
-## 2026-10-06 evening — switch to letterbox (user decision); overnight plan running (`v2/runs/20261006-2009_overnight-letterbox/orchestrator.log`)
+## 2026-10-06 evening — switch to letterbox (user decision); overnight plan running (`runs/20261006-2009_overnight-letterbox/orchestrator.log`)
 
-### MS-CXR localisation REFERENCE on stretch features, stricter tests and baselines (`v2/runs/20261006-201442_mscxr-loc-stretch`)
+### MS-CXR localisation REFERENCE on stretch features, stricter tests and baselines (`runs/20261006-201442_mscxr-loc-stretch`)
 Stage 4 run `20261006-1709_stage4-regions` (no cross-fitting; MS-CXR patients never in the fit split). Tests on the 32×32 grid: hit_any (any overlap, lenient), IoU ≥ 0.1, box centre in region (weight ≥ 0.5), side correct. Baselines: a random relevant region (expected value) and always the largest relevant region.
 
 | set | chooser | hit_any | IoU ≥ 0.1 | centre in | side |
@@ -399,11 +399,11 @@ Per finding, model IoU ≥ 0.1 (A / B; random region): atelectasis 0.93 / 0.89 (
 **Reading: A2 localises well above chance on every test**: about +0.35 IoU ≥ 0.1 over a random region and +0.35 side accuracy over chance. This is the reference for the letterbox rerun.
 (First attempt `20261006-200506_mscxr-loc-stretch` FAILED on a table-formatting bug after computing; fixed.)
 
-### Letterbox pilot (1,000 images) — GATE PASSED (`v2/runs/20261006-201635_region-pilot-lb`, gate `…202054_pilot-gate`)
-Region maps recomputed for the padded geometry (`v2/nesy/regions.py`; CheXmask weights `mimic_pilot_lb`, compressed chunks, 0.4 MB). Checks vs the stretch pilot on the same images: left/right flip check 100 %; median same-side grid IoU (ImaGenome lung box vs CheXmask lung) left 0.375 (stretch 0.382), right 0.460 (0.470); left-lung mask share inside its box 1.00; image size mismatches 0; letterbox global vs an independent `encode_image` of the letterboxed image cosine min 1.00000. 23 / 1,000 images have CheXmask Dice RCA < 0.7, so their CheXmask regions are set missing. 10 overlays in the run's `overlays/` (one checked by eye: masks and boxes sit on the anatomy in the padded frame). Full pass continuing automatically.
+### Letterbox pilot (1,000 images) — GATE PASSED (`runs/20261006-201635_region-pilot-lb`, gate `…202054_pilot-gate`)
+Region maps recomputed for the padded geometry (`nesy/regions.py`; CheXmask weights `mimic_pilot_lb`, compressed chunks, 0.4 MB). Checks vs the stretch pilot on the same images: left/right flip check 100 %; median same-side grid IoU (ImaGenome lung box vs CheXmask lung) left 0.375 (stretch 0.382), right 0.460 (0.470); left-lung mask share inside its box 1.00; image size mismatches 0; letterbox global vs an independent `encode_image` of the letterboxed image cosine min 1.00000. 23 / 1,000 images have CheXmask Dice RCA < 0.7, so their CheXmask regions are set missing. 10 overlays in the run's `overlays/` (one checked by eye: masks and boxes sit on the anatomy in the padded frame). Full pass continuing automatically.
 
 ### Letterbox full pass and retraining — results as they arrive (all val, seen by backbone)
-- **Full letterbox region pass** (`v2/runs/20261006-214338_region-full-lb`): 218,187 images in 56.1 min (64.9 img/s), 27 shards `mimic_full_lb_shards` (15 GB); size mismatches 0; flip check 99.9 %; global vs independent encode cosine 1.00000. Region features set missing for the 242 left/right failures (both sets) and for the 4,485 images with CheXmask Dice RCA < 0.7 (CheXmask set). Letterbox CheXmask weights stored as compressed chunks (`mimic_full_lb_p0/p1_chunks`, < 0.1 GB). Free space after the pass 20.8 GB.
+- **Full letterbox region pass** (`runs/20261006-214338_region-full-lb`): 218,187 images in 56.1 min (64.9 img/s), 27 shards `mimic_full_lb_shards` (15 GB); size mismatches 0; flip check 99.9 %; global vs independent encode cosine 1.00000. Region features set missing for the 242 left/right failures (both sets) and for the 4,485 images with CheXmask Dice RCA < 0.7 (CheXmask set). Letterbox CheXmask weights stored as compressed chunks (`mimic_full_lb_p0/p1_chunks`, < 0.1 GB). Free space after the pass 20.8 GB.
 - **Stage 1 letterbox** (`…224426_lb-stage1`): macro AUROC 0.8305 vs stretch 0.8240 (+0.0065); AUPRC 0.490 vs 0.480; ECE 0.024 vs 0.023. Gains: lung_lesion +0.043, pneumonia +0.016, cardiomegaly +0.013, consolidation +0.010, ECM +0.008; fracture −0.033 (17 positives).
 - **Stage 2 letterbox** (`…224712_lb-stage2`): macro AUROC 0.8350 (stretch 0.8293); vs letterbox Stage 1 +0.0044 AUROC, −0.0032 ECE (ECE 0.021).
 - **Stage 3 letterbox** (`…231036_lb-stage3`, pruned k6): hierarchy violations 0; macro AUROC about 0.831 (stretch 0.824); gap to letterbox Stage 2 −0.0044 [−0.0098, +0.0007]; ECE 0.024. CIs exclude zero (S3 lower than S2) for any_abnormality, lung_opacity, atelectasis, consolidation, edema and support_devices; pneumonia ECE +0.017.
@@ -412,7 +412,7 @@ Region maps recomputed for the padded geometry (`v2/nesy/regions.py`; CheXmask w
 - **Stage 4 ablation on the Stage 3 base** (`…232438_lb-stage3-s4`, bootstrap `…234919_lb-bootstrap-s4`): 66 region-classifier features (per finding: max, max over left, max over right, for both region sets) + missing indicator, cross-fitted. Hierarchy violations 0. Macro AUROC +0.0035 over Stage 3 [−0.0029, +0.0113], n.s.; ECE −0.0005 n.s.; vs Stage 2 −0.0009 [−0.0071, +0.0061], n.s. Per finding vs Stage 3: pleural_other +0.028, lung_lesion +0.012, pneumothorax +0.008 (pneumothorax vs Stage 2: +0.013 [+0.002, +0.024], CI excludes zero), lung_opacity +0.004; fracture −0.012. **Lateralised findings**, side-head accuracy S3 → S3+s4: pneumothorax 0.797 → 0.831, support_devices 0.743 → 0.761, atelectasis 0.679 → 0.688, effusion 0.719 → 0.726, lung_opacity 0.725 → 0.727; pneumonia 0.630 → 0.598, consolidation 0.691 → 0.683, fracture 0.696 → 0.609 (n 23). **Reading:** the region features close most of the Stage 3 vs Stage 2 accuracy gap and help pneumothorax (discrimination and side), but the overall gain is not significant.
 - **Stage 5 letterbox** (`…232412_lb-stage5-emb-nb10`): macro AUROC 0.8315, +0.0009 vs letterbox Stage 1 [−0.0061, +0.0069] n.s. (stretch: +0.0049); ECE −0.0029 n.s. **Stage 3 + nb10** (`…235600_lb-stage5-s3-nb10`): 0.8331, +0.0026 vs Stage 3 [−0.0004, +0.0059] n.s.; 0 hierarchy violations; ECE 0.025.
 - **Letterbox build-stage rule (bootstrap `…000917_lb-bootstrap`):** Stage 2 − Stage 1 = +0.0044 AUROC [−0.0019, +0.0096], ECE −0.0032 [−0.0048, +0.0011]: **on letterbox, Stage 2 no longer beats Stage 1 significantly on either metric** (stretch: +0.0053, CI excluded 0). Stage 3 − Stage 2 −0.0044 [−0.0098, +0.0007]; Stage 5 − Stage 2 −0.0035 [−0.0065, −0.0002] (significantly lower). For the user to decide whether Stage 2 stays.
-- **Stretch vs letterbox, side by side** (`v2/runs/20261007-001447_compare-variants/comparison.md`; paired patient bootstrap `v2/runs/20261007-001536_bootstrap-stretch-vs-lb`, 2,000 resamples, same val studies):
+- **Stretch vs letterbox, side by side** (`runs/20261007-001447_compare-variants/comparison.md`; paired patient bootstrap `runs/20261007-001536_bootstrap-stretch-vs-lb`, 2,000 resamples, same val studies):
 
   | stage | stretch macro AUROC | letterbox | Δ [95 % CI] | ECE stretch → letterbox |
   |---|---|---|---|---|
@@ -426,30 +426,30 @@ Region maps recomputed for the padded geometry (`v2/nesy/regions.py`; CheXmask w
   | Stage 4 MS-CXR side (A / B) | 0.846 / 0.853 | 0.846 / 0.867 | | |
 
   Per-finding differences whose CI excludes zero are consistent across stages: cardiomegaly +0.008 to +0.013, enlarged cardiomediastinum +0.007 to +0.011, any_abnormality +0.004 to +0.006, support_devices +0.004 to +0.006 (all stages); atelectasis +0.007 (S2, S3); effusion +0.005 (S1); edema +0.006 (S5). Only loss: fracture −0.037 (S2) and −0.041 (S5), 17 positives. **Reading:** letterbox helps most where aspect ratio matters (heart/mediastinal size), as expected from the stretch distortion.
-- **External feature cache** (`v2/runs/20261007-002319_ext-features`, caching only: no labels read, no metrics): letterbox, percentile windowing 0.5–99.5. VinDr-CXR test 3,000 images (CheXmask 3,000; RCA ≥ 0.7: 2,985; 15 with region features missing); PadChest-GR 4,555 images (CheXmask 4,310; RCA ≥ 0.7: 4,307; 248 missing = 245 without masks + 3 low RCA). No images dropped, size mismatches 0. Outputs `v2/data/features/regions/ext_{vindr_test,padchest_gr}_lb_shards` (45 MB + 67 MB). Tested first on 40 images per set (`…001135_ext-features-test`).
-- **Overnight orchestrator** (`v2/runs/20261006-2009_overnight-letterbox`) finished 00:31. Its "skipped: Stage 4 or MS-CXR" line refers to the first lb-stage4 attempt; both were rerun successfully by hand (`gpu_chain_rerun.sh`), and the Stage 4 ablation and its bootstrap were run by `ablation_s4.sh`. Nothing was skipped in the end. Free space at the end 19.2 GB; nothing deleted. Stretch region features (`mimic_full_shards`, 15 GB) kept pending the user's decision.
+- **External feature cache** (`runs/20261007-002319_ext-features`, caching only: no labels read, no metrics): letterbox, percentile windowing 0.5–99.5. VinDr-CXR test 3,000 images (CheXmask 3,000; RCA ≥ 0.7: 2,985; 15 with region features missing); PadChest-GR 4,555 images (CheXmask 4,310; RCA ≥ 0.7: 4,307; 248 missing = 245 without masks + 3 low RCA). No images dropped, size mismatches 0. Outputs `data/features/regions/ext_{vindr_test,padchest_gr}_lb_shards` (45 MB + 67 MB). Tested first on 40 images per set (`…001135_ext-features-test`).
+- **Overnight orchestrator** (`runs/20261006-2009_overnight-letterbox`) finished 00:31. Its "skipped: Stage 4 or MS-CXR" line refers to the first lb-stage4 attempt; both were rerun successfully by hand (`gpu_chain_rerun.sh`), and the Stage 4 ablation and its bootstrap were run by `ablation_s4.sh`. Nothing was skipped in the end. Free space at the end 19.2 GB; nothing deleted. Stretch region features (`mimic_full_shards`, 15 GB) kept pending the user's decision.
 
 ### Stretch archive before deletion (2026-10-07)
-`v2/archive/stretch_v1/` (0.615 GB, 38 files, sha256 in `MANIFEST.txt`; check run `v2/runs/20261007-*_verify-stretch-archive`). Predictions for every study in every split, test included (predictions only, no test metric computed or viewed), plus trained models:
+`archive/stretch_v1/` (0.615 GB, 38 files, sha256 in `MANIFEST.txt`; check run `runs/20261007-*_verify-stretch-archive`). Predictions for every study in every split, test included (predictions only, no test metric computed or viewed), plus trained models:
 - stage1, stage2, stage3 (pruned k6, incl. side-head probabilities), stage5 (emb + nb10): `predictions_all_splits.parquet` (218,139 studies; test 3,041) regenerated from each run's `model.joblib` by `scripts/export_predictions.py`; non-test rows reproduce the original predictions (max |diff| 1.8e-7 to 5.7e-6).
 - stage4_k1 (original Stage 4, `20261006-1709`) and stage4_crossfit2 (`20261006-202854`): per image × region × finding scores (218,187 images; test 3,042) and fold models. The original runs did not save weights; reran with `--save-models` (`20261007-055844_stage4-stretch-{k1,crossfit}-save`), scores identical to the originals (same index and NaN pattern, mean |diff| 0, max one float16 step).
-- **Deleted 2026-10-07 (user confirmed "yes, delete")**, 33 GB: `v2/data/features/regions/mimic_full_shards/`, `mimic_full_weights.npy`, `v2/data/index/` (stretch retrieval index), pilot outputs (`mimic_pilot_*` except `mimic_pilot_ids.parquet`), test-mode caches (`ext_*_lb_test_shards`, `exttest_*`), CheXmask `OriginalResolution/{CheXpert,ChestX-Ray8}.csv` and `Preprocessed/{CheXpert,Padchest,VinDr-CXR}.csv`. Kept: stretch embeddings, both CheXmask MIMIC files, CheXmask OriginalResolution VinDr and PadChest, external caches, PadChest-GR prior studies, VinDr train, all runs and results. Stretch Stage 4 can no longer be recomputed from region features; its scores and models are in `v2/archive/stretch_v1/`. Free space after deletion: 53.5 GB (was 18.1 GB).
+- **Deleted 2026-10-07 (user confirmed "yes, delete")**, 33 GB: `data/features/regions/mimic_full_shards/`, `mimic_full_weights.npy`, `data/index/` (stretch retrieval index), pilot outputs (`mimic_pilot_*` except `mimic_pilot_ids.parquet`), test-mode caches (`ext_*_lb_test_shards`, `exttest_*`), CheXmask `OriginalResolution/{CheXpert,ChestX-Ray8}.csv` and `Preprocessed/{CheXpert,Padchest,VinDr-CXR}.csv`. Kept: stretch embeddings, both CheXmask MIMIC files, CheXmask OriginalResolution VinDr and PadChest, external caches, PadChest-GR prior studies, VinDr train, all runs and results. Stretch Stage 4 can no longer be recomputed from region features; its scores and models are in `archive/stretch_v1/`. Free space after deletion: 53.5 GB (was 18.1 GB).
 
 ### Leakage check: Stage 4 and retrieval features for fit-split studies (2026-10-07)
 - **Stage 4 → Stage 3 ablation** (`lb-stage3-s4` read `NESY_S4_RUN=runs/20261006-224243_lb-stage4`, config `crossfit: 2`): train-split images are scored by the fold model that did not see them (2 folds by hash of subject_id, so patient-level); calib/thresh/val/test images get the mean of the two fold models, neither trained on them. Out-of-fold by construction.
 - **Retrieval nb features** (`retrieval_features.py`, letterbox run `20261006-224123_lb-retrieval`): FAISS index on train only; for every query (train included) all studies of the query's own patient are excluded from its neighbours, so a train study's own label never enters its feature (leave-one-patient-out). Logged own-patient neighbours after exclusion: 0 (both stretch and letterbox runs).
-- **Empirical check** (`v2/runs/20261007-oof-check/`, train vs val only): AUROC of each feature alone against the study label, train minus val. nb10: mean +0.007 (range −0.029 to +0.079). s4 max features: mean +0.027, but ≤ 0.018 for every finding except lung_lesion (+0.058/+0.069; 64 val positives) and pleural_other (+0.184/+0.155; 14 val positives), where val AUROC is very noisy. No sign of in-sample leakage for the common findings; pleural_other is unresolved at this val size. Minor mismatch: train scores come from one half-data fold model, other splits from the average of two (val spread 0.974 vs train 0.992 in standardised units).
+- **Empirical check** (`runs/20261007-oof-check/`, train vs val only): AUROC of each feature alone against the study label, train minus val. nb10: mean +0.007 (range −0.029 to +0.079). s4 max features: mean +0.027, but ≤ 0.018 for every finding except lung_lesion (+0.058/+0.069; 64 val positives) and pleural_other (+0.184/+0.155; 14 val positives), where val AUROC is very noisy. No sign of in-sample leakage for the common findings; pleural_other is unresolved at this val size. Minor mismatch: train scores come from one half-data fold model, other splits from the average of two (val spread 0.974 vs train 0.992 in standardised units).
 
 ### Lane C: DenseNet-121 baseline (2026-10-07; val; ImageNet init, fine-tuned on the MIMIC fit split; same one-frontal-per-study images, splits and labels as the pipeline, see DATA.md)
-- Image cache `v2/data/image_cache_256/` (letterbox 256 px, compressed uint8 shards): 218,139 studies, 8.9 GB (`runs/20261007-063539_image-cache-p{0,1}`).
-- Run `v2/runs/20261007-071846_densenet121` (L40S; ImageNet weights `v2/models/densenet121-a639ec97.pth`; 14 sigmoid outputs; masked BCE; 224 random crop, no flip; bf16; 8 epochs, OneCycle lr 1e-4, batch 96; ~2.9 min/epoch). Trained on the fit split minus its 5% inner holdout (178,839 studies); **epoch chosen on the inner holdout (8,915 studies): epoch 4** (inner macro AUROC 0.8365). Platt on calib. Predictions for all splits incl. test saved (no test metric).
+- Image cache `data/image_cache_256/` (letterbox 256 px, compressed uint8 shards): 218,139 studies, 8.9 GB (`runs/20261007-063539_image-cache-p{0,1}`).
+- Run `runs/20261007-071846_densenet121` (L40S; ImageNet weights `models/densenet121-a639ec97.pth`; 14 sigmoid outputs; masked BCE; 224 random crop, no flip; bf16; 8 epochs, OneCycle lr 1e-4, batch 96; ~2.9 min/epoch). Trained on the fit split minus its 5% inner holdout (178,839 studies); **epoch chosen on the inner holdout (8,915 studies): epoch 4** (inner macro AUROC 0.8365). Platt on calib. Predictions for all splits incl. test saved (no test metric).
   (A first run that trained on the inner holdout, `…070920_densenet121`, was stopped after 2 epochs when the selection rule changed; not used.)
 - **Main (inner-holdout epoch 4), val:** macro AUROC 0.8175, AUPRC 0.480, ECE 0.023; PA 0.843 / AP 0.798; hierarchy violations 164 (independent sigmoids; largest: isa_006 cardiomegaly > enlarged_cardiomediastinum 90, isa_101 lung_opacity > any_abnormality 33, isa_005 pneumonia > consolidation 23; per-edge table below. Correction 2026-10-07: a chat message at 07:53 mislabelled the first two edges as pneumonia > consolidation (90) and cardiomegaly > enlarged cardiomediastinum (33); recounted from the predictions). Letterbox Stage 1 for reference: 0.8305 (PA 0.855 / AP 0.808).
 - Per finding vs letterbox Stage 1: lower on 13 of 14 (lung_lesion −0.056, consolidation −0.034, fracture −0.020, pneumothorax −0.018), higher on pleural_other (+0.021, 14 positives).
 - **Optimistic upper bound (epoch chosen on validate, epoch 3; labelled optimistic):** macro AUROC 0.8199, ECE 0.022, 142 violations.
 - Patient bootstrap against Stage 1 and the final head: pending (lane C waits for the final head).
 
-### Lane A items 1-2: final head decision (2026-10-07 08:13; `v2/runs/20261007-081332_decide-head`; val, seen by backbone; patient bootstrap 2,000)
+### Lane A items 1-2: final head decision (2026-10-07 08:13; `runs/20261007-081332_decide-head`; val, seen by backbone; patient bootstrap 2,000)
 Rules (user, revised 07:50 before the step ran): CheXmask anatomy (A) and region features (R, CheXmask set B) no-harm (dropped only if removing them is significantly better); retrieval and association links must have a CI excluding 0. Bootstraps: `runs/20261007-080304_a1-bootstrap`, `runs/20261007-080839_a2-bootstrap`. Head runs: C `…063123_a1-s3-nocm`, C+A+R `…065311_a1-s3-s4b`, C+R `…071353_a1-s3-s4b-nocm`, C+A+nb5 `…072433_a2-s3-nb5`, C+A+nb25 `…074437_a2-s3-nb25`.
 - **CheXmask anatomy: KEEP.** With region features present, with − without: macro AUROC **+0.0023 [+0.0004, +0.0044]** (significantly better with), ECE +0.0002 [−0.0015, +0.0020], cardiomegaly +0.0015 [−0.0003, +0.0037], ECM −0.0002 [−0.0018, +0.0015]. Without region features: +0.0016 [−0.0005, +0.0040] n.s.
 - **Region features (set B): KEEP** (no harm): macro AUROC +0.0038 [−0.0019, +0.0108], ECE −0.0008 [−0.0040, +0.0016].
@@ -457,7 +457,7 @@ Rules (user, revised 07:50 before the step ran): CheXmask anatomy (A) and region
 - **Final head: concepts (77) + CheXmask anatomy + region scores (set B) + retrieval k=25**, trained as `runs/20261007-081339_final-head` (lane A2).
 - **DenseNet evaluation crop (confirmed in code):** evaluation uses the **centre** 224×224 crop of the 256-px letterbox, offsets (16, 16) (`scripts/densenet_train.py: batches_to_tensor(train=False)`; external predictions `scripts/densenet_external.py` slice `[16:240, 16:240]`); training uses random 224 crops (offsets 0–32), no flip.
 
-### Hierarchy violations, validate (same counting for every model; `v2/runs/*_hierarchy-violations`)
+### Hierarchy violations, validate (same counting for every model; `runs/*_hierarchy-violations`)
 Per is_a edge, studies with P(child) > P(parent); total over edges; studies with ≥ 1 violation (1,733 val studies):
 
 | edge | DenseNet-121 (main) | linear probe (Stage 1, letterbox) | interpretable head (Stage 3 factorised, letterbox) |
@@ -478,7 +478,7 @@ Per is_a edge, studies with P(child) > P(parent); total over edges; studies with
 | **studies with ≥ 1 violation** | **157** | **362** | **0** |
 The factorised head multiplies P(child | parent) down the tree, so 0 holds by construction; the final head is the same construction (added when its run is done).
 
-### Report-draft points 7 and 8 (written automatically by `v2/scripts/results_7_8.py`, run `20261007-084333_results-7-8`; val, seen by backbone)
+### Report-draft points 7 and 8 (written automatically by `scripts/results_7_8.py`, run `20261007-084333_results-7-8`; val, seen by backbone)
 Final head run: `runs/20261007-081339_final-head` (concepts + CheXmask anatomy + region set B + retrieval k=25).
 - **7. Final head:** macro AUROC 0.8362, **AUPRC 0.4946**, ECE 0.0242; **AUROC PA 0.8652 / AP 0.8161** (n PA 661, AP 1072).
   Per finding (AUROC all / PA / AP, AUPRC all):
@@ -545,7 +545,7 @@ MACRO                       0.0011 -0.0037   0.0051          False
 
 
 ### Lanes A2–A5 results (2026-10-07 morning; val, seen by backbone; patient bootstrap 2,000)
-- **Final head** (`v2/runs/20261007-081339_final-head`: 77 concepts + CheXmask anatomy + region set B + retrieval k=25): macro AUROC **0.8362** (+0.0056 vs letterbox Stage 3), ECE 0.0242, **0 hierarchy violations**. Final head − Stage 1: AUROC +0.0057 [−0.0024, +0.0145], ECE 0.0000 n.s.
+- **Final head** (`runs/20261007-081339_final-head`: 77 concepts + CheXmask anatomy + region set B + retrieval k=25): macro AUROC **0.8362** (+0.0056 vs letterbox Stage 3), ECE 0.0242, **0 hierarchy violations**. Final head − Stage 1: AUROC +0.0057 [−0.0024, +0.0145], ECE 0.0000 n.s.
 - **Retrieval re-check with region features present** (`runs/20261007-084002_final-vs-car`): final head − C+A+R = AUROC **+0.0018 [−0.0006, +0.0043], n.s.**; ECE +0.0006 n.s. Under the accuracy-only rule (CI must exclude 0), retrieval does **not** earn its place once region features are in the head. **Decision pending (user):** drop retrieval → final head = C+A+R (`runs/20261007-065311_a1-s3-s4b`).
 - **Item 4, out-of-fold check on calib+thresh pooled** (`…a4-oof-calib-thresh`): 22 region "max" features (sets A and B); train AUROC inside the calib+thresh 95% CI for 21/22, **above it for 0/22**; mean train − compare gap −0.0052. No sign of in-sample leakage.
 - **Item 5, knowledge rules** (`…a5-rules`; region thresholds fitted on thresh): **R1 localisation support DROPPED**: present-tier precision 0.788 → 0.791, +0.0031 [−0.0015, +0.0078]; sensitivity 0.378 → 0.361; 63 demoted (46 true positives). **R2 side agreement KEPT**: side accuracy among stated sides 0.897 → 0.910, **+0.0134 [+0.0022, +0.0257]**; share of stated lateralisable findings that keep a side 39.5% → 29.4% (cost: fewer sides stated).
@@ -556,14 +556,14 @@ MACRO                       0.0011 -0.0037   0.0051          False
 - **DenseNet vs final head** (`last_c-bootstrap` in `runs/20261007-0817_lane-c-post`): DenseNet − final head AUROC **−0.0187 [−0.0303, −0.0065]**; DenseNet − Stage 1 **−0.0130 [−0.0250, −0.0010]**; ECE n.s. Per-finding table under "Report-draft points 7 and 8".
 
 ### Decisions (user, 2026-10-07 ~09:20)
-1. **Retrieval dropped from the head**; final head = **C+A+R** (`v2/runs/20261007-065311_a1-s3-s4b`). Retrieval kept only as case-based evidence (context, no effect on probabilities or bands). Reason: with region features present it adds +0.0018 [−0.0006, +0.0043] (n.s.).
-2. The Stage 8 run on the earlier head **with retrieval** (`v2/runs/20261007-084341_stage8-val`) finishes and is kept, labelled "head with retrieval".
-3. Rerun on C+A+R, one orchestrator `v2/runs/20261007-0925_lane-final` (rules, case evidence, per-view metrics, hierarchy violations, DenseNet bootstraps, MLP comparison, Stage 8 on all validate studies); its results are appended below automatically by `results_final.py`.
+1. **Retrieval dropped from the head**; final head = **C+A+R** (`runs/20261007-065311_a1-s3-s4b`). Retrieval kept only as case-based evidence (context, no effect on probabilities or bands). Reason: with region features present it adds +0.0018 [−0.0006, +0.0043] (n.s.).
+2. The Stage 8 run on the earlier head **with retrieval** (`runs/20261007-084341_stage8-val`) finishes and is kept, labelled "head with retrieval".
+3. Rerun on C+A+R, one orchestrator `runs/20261007-0925_lane-final` (rules, case evidence, per-view metrics, hierarchy violations, DenseNet bootstraps, MLP comparison, Stage 8 on all validate studies); its results are appended below automatically by `results_final.py`.
 4. **R2 (side agreement) kept; R1 (localisation support) and the association links dropped.**
 5. Task 3: the hand-written may_occur_in table is kept, every row marked `source: author-curated, needs review` / `review: needed` (Chest ImaGenome has no finding-to-region validity table; no empirical table built).
 6. External tests: not yet.
 
-### Final head = C+A+R (user decision 2026-10-07; written automatically by `v2/scripts/results_final.py`, run `20261007-101645_results-final`; val, seen by backbone)
+### Final head = C+A+R (user decision 2026-10-07; written automatically by `scripts/results_final.py`, run `20261007-101645_results-final`; val, seen by backbone)
 Head run `runs/20261007-065311_a1-s3-s4b`: 77 concepts + 17 CheXmask anatomy features + region scores (CheXmask set B); calibration (Platt) on calib and four-band thresholds on thresh were fitted inside that run. Retrieval is used only as case-based evidence (k = 5, context only). R2 kept, R1 and association links dropped (user decision).
 - **Head metrics:** macro AUROC 0.8344, AUPRC 0.4911, ECE 0.0236; AUROC PA 0.8640 / AP 0.8129. Hierarchy violations: total {'HEAD': 0, 'S1': 392, 'DenseNet': 164}, studies with ≥ 1 {'HEAD': 0, 'S1': 362, 'DenseNet': 157}.
   Per finding AUROC (all / PA / AP):
@@ -652,19 +652,19 @@ support_devices             0.927  0.881  0.891
   - C+A+R head vs Stage 1: +0.0039 [−0.0049, +0.0124], n.s.; DenseNet − C+A+R head −0.0169 [−0.0288, −0.0048] (significant); optimistic DenseNet − head −0.0145 [−0.0263, −0.0029]. MLP: no variant differs significantly from the linear head (best: 256 units inner-holdout −0.0009 [−0.0074, +0.0051]).
   - Stage 8 on C+A+R: 87.5% of reports matched the belief graph on the first attempt and 12.5% fell back to the template. The regenerations rescued none (first-pass and final match rates are identical), so the feedback loop is not effective as written. Mismatches are mostly omissions (support devices 118, enlarged cardiomediastinum 77 on the first attempt) and sides (42). The template itself round-trips 96.2% (65 template omissions = comparator/RadGraph limits), so part of the "omitted" count is the parser, not the LLM. Head with retrieval: 86.3% first-pass, 13.7% fallback. No LLM errors after retries (HTTP 429 rate limits retried 246 times).
 
-### Knowledge-base tasks 1–6 (2026-10-07; see `v2/KG.md`)
-- **Task 1, RadLex IDs** (`v2/kg/radlex_map.yaml`, `v2/kg/devices.yaml`, `runs/*_build-radlex-map`; candidates `runs/*_radlex-candidates`): findings 7 exact / 5 approximate / 2 none (cardiomegaly, enlarged cardiomediastinum); report zones 3 exact (upper RID1348, mid RID1351, lower RID1354) / 1 approximate (apical → apex of lung); anatomy nodes 30 exact / 14 approximate / 4 none (newly matched: the six sided lung zones, RID1349–1356); device types 7 exact / 6 approximate / 4 none (chest port, sternotomy wires, CABG grafts, aortic graft). All IDs checked present and non-obsolete in RadLex 4.3; no match forced. Validated on load (2 new tests; 51 pass).
+### Knowledge-base tasks 1–6 (2026-10-07; see `KG.md`)
+- **Task 1, RadLex IDs** (`kg/radlex_map.yaml`, `kg/devices.yaml`, `runs/*_build-radlex-map`; candidates `runs/*_radlex-candidates`): findings 7 exact / 5 approximate / 2 none (cardiomegaly, enlarged cardiomediastinum); report zones 3 exact (upper RID1348, mid RID1351, lower RID1354) / 1 approximate (apical → apex of lung); anatomy nodes 30 exact / 14 approximate / 4 none (newly matched: the six sided lung zones, RID1349–1356); device types 7 exact / 6 approximate / 4 none (chest port, sternotomy wires, CABG grafts, aortic graft). All IDs checked present and non-obsolete in RadLex 4.3; no match forced. Validated on load (2 new tests; 51 pass).
 - **Task 2, hierarchy comparison** (`runs/*_compare-hierarchy/hierarchy_comparison.csv`): 29 edges (12 finding is_a + 17 device types) → **13 agree, 10 differ, 6 not comparable**. All 13 comparable device edges agree (tubes, catheters, valve, pacemaker under RadLex "medical device"). All 10 comparable finding edges differ: our CheXpert hierarchy is appearance-based (lung opacity as the parent of atelectasis, consolidation, edema, lung lesion; pneumonia under consolidation), RadLex is mechanism-based (atelectasis < collapse < architectural distortion; consolidation < displaced substance; edema < fluid disorder; pneumonia and pneumothorax < respiratory disorder; RadLex "opacity" < imaging observation; RadLex "abnormal" is a descriptor, so no root edge can agree). Not comparable: cardiomegaly < enlarged cardiomediastinum, enlarged cardiomediastinum < root, and 4 devices without RadLex classes. Our hierarchy unchanged.
 - **Task 3**: Chest ImaGenome has no finding-to-region validity table (semantics/ has attribute categories, UMLS mapping and object lists; annotation_utils/ has image-only PDFs and a 500-row agreement sample). Hand-written may_occur_in kept, all 14 rows marked needs review (user decision).
 - **Task 4, Fleischner glossary** (`findings.yaml: glossary`; headwords and pages `runs/20261007-0820_glossary-text`): 8 of 14 findings matched (lung opacity → Opacity p9; atelectasis p3; consolidation p5; pneumonia p11; lung lesion → Nodule p9 / Mass p8; pleural effusion → Pleura: Effusion p10; pleural other → Pleura: Thickening / Plaque p11, Apical Cap p3; pneumothorax p11). No term: any_abnormality, edema, enlarged cardiomediastinum, cardiomegaly, fracture, support devices. Differences in use: lung opacity is a category for us but a non-specific descriptor in the glossary; pneumonia is a diagnosis that can show as any opacity, not only consolidation (our is_a edge is narrower); lung lesion merges nodule (≤ 30 mm) and mass (> 30 mm); pleural other lumps thickening, plaque and scarring. Paraphrases are in our own words.
-- **Task 5, RadReport template** (`v2/kg/proposals/radreport_comparison.md`): the template has anatomical subsections, section-level normal sentences, severity grades, vascular congestion, aorta/spine findings, device tip positions and interval change; we add certainty tiers, side/zone, positive pneumothorax/lesion/fracture/pleural-thickening sentences. Proposals (layout by subsection, procedure line, "The lungs are clear." / "The mediastinal contours are normal." pertinent negatives; no osseous normal sentence) **await approval; not applied**.
+- **Task 5, RadReport template** (`kg/proposals/radreport_comparison.md`): the template has anatomical subsections, section-level normal sentences, severity grades, vascular congestion, aorta/spine findings, device tip positions and interval change; we add certainty tiers, side/zone, positive pneumothorax/lesion/fracture/pleural-thickening sentences. Proposals (layout by subsection, procedure line, "The lungs are clear." / "The mediastinal contours are normal." pertinent negatives; no osseous normal sentence) **await approval; not applied**.
 - **Task 6, sources** (`runs/20261007-1056_add-sources/source_counts.csv`): 255 rows across 13 tables, all with a source: **RadLex ID 130; author-curated, needs review 67; Chest ImaGenome 21; CheXpert label hierarchy 19; Fleischner glossary 8; RadReport template 4; no external source (no matching glossary term) 6.** (The 13 ImaGenome-map and 28 external-map rows name their label source but the mappings themselves are author-curated drafts.)
 
-### DenseNet-121 external predictions (2026-10-07; `v2/runs/20261007-081007_densenet-external`)
+### DenseNet-121 external predictions (2026-10-07; `runs/20261007-081007_densenet-external`)
 Inner-holdout epoch with its Platt calibration; letterbox 256 → centre 224 crop; external DICOMs windowed at the 0.5–99.5 percentiles (MONOCHROME1 inverted). VinDr-CXR test 3,000/3,000 and PadChest-GR 4,555/4,555 images predicted, 0 unreadable. Manifests read with image columns only: **no labels read, no metric computed**. For the final external comparison (on hold).
 
-### KG task 7 — glossary-derived concepts, ABLATION ONLY (2026-10-07; lane `v2/runs/20261007-1047_lane-kg7`; val, seen by backbone)
-- Phrases: `v2/data/concepts/glossary_phrases.csv` (52 short phrases written from the Fleischner glossary terms for 9 findings; no glossary wording for cardiomegaly, enlarged cardiomediastinum, fracture, support devices). Encoded with CLEAR's text encoder; check: re-encoding 277 bank sentences reproduced the stored embeddings (cosine 1.000000), so phrases are scored exactly as the 77 (`runs/20261007-104703_glossary-concepts`, letterbox).
+### KG task 7 — glossary-derived concepts, ABLATION ONLY (2026-10-07; lane `runs/20261007-1047_lane-kg7`; val, seen by backbone)
+- Phrases: `data/concepts/glossary_phrases.csv` (52 short phrases written from the Fleischner glossary terms for 9 findings; no glossary wording for cardiomegaly, enlarged cardiomediastinum, fracture, support devices). Encoded with CLEAR's text encoder; check: re-encoding 277 bank sentences reproduced the stored embeddings (cosine 1.000000), so phrases are scored exactly as the 77 (`runs/20261007-104703_glossary-concepts`, letterbox).
 - Fit-split AUROC (187,754 studies), own finding, 0.60 floor: **31 of 52 kept** (`runs/20261007-104703_glossary-concepts/glossary_phrases_scored.csv`). Best per finding: pleural effusion "pleural effusion" 0.877, edema "pulmonary edema" 0.872, pneumothorax 0.846, pleural other "pleural fibrosis" 0.814, lung opacity "increased lung attenuation" 0.791, lung lesion "lung mass" 0.775, atelectasis "lung collapse" 0.755, consolidation "masslike consolidation" 0.727, pneumonia "lung infection" 0.727. Below floor include "kerley lines" 0.33, "blunting of the costophrenic angle" 0.29, "air bronchograms" 0.45, "plate-like atelectasis" 0.49, "nodule" 0.55.
 - Head with the 31 glossary concepts in place of the 77 (+ the same A and R; `runs/20261007-104915_kg7-s3-gloss`): macro AUROC 0.8339, AUPRC 0.4907, ECE 0.0235; 0 hierarchy violations.
 - Patient bootstrap vs C+A+R (2,000; `runs/20261007-110233_kg7-bootstrap`): **GLOSS − HEAD macro AUROC −0.0004 [−0.0037, +0.0029]; macro ECE −0.0002 [−0.0017, +0.0028]** — no difference. Per finding, CI excludes 0 only for consolidation +0.0033 [+0.0007, +0.0065] and cardiomegaly −0.0027 [−0.0052, −0.0004].
@@ -675,11 +675,11 @@ Inner-holdout epoch with its Platt calibration; letterbox 256 → centre 224 cro
 
 No test or external label was read and no test or external metric computed. No test-split head predictions were generated.
 
-### End-to-end runner (`v2/scripts/run_pipeline.py`, config `v2/configs/pipeline.yaml`)
+### End-to-end runner (`scripts/run_pipeline.py`, config `configs/pipeline.yaml`)
 - Steps: cached features → C+A+R head → calibrated marginals → four bands → belief graph (G6 side, R2, G7 zone, D2/D3) → case evidence (context only) → template → Stage 8.
 - Config switches: R1 off, R2 on; report layout `current` (`radreport` raises: proposals not approved); `show_case_evidence` off; Stage 8 comparator / retry / attempts.
 - Each run writes `manifest.json` (also inside `config.json`): SHA-256 of 52 files. These are the head model and calibrators, thresholds, region scores and thresholds, concept list and text embeddings, image embeddings, CheXmask features, case table, splits, every KG YAML, the configs and the code. The git field is `de121e6…+dirty` because v2 is not committed.
-- Guards: `--split test` is refused without `--allow-test`; `vindr_test` / `padchest_gr` are refused without `--allow-external`, and external feature assembly is not built. The runner never loads the label file: splits come from the frozen patient split file. Tests: `v2/tests/test_eval_v2.py` (guards, label rules, comparator v2); 59/59 tests pass.
+- Guards: `--split test` is refused without `--allow-test`; `vindr_test` / `padchest_gr` are refused without `--allow-external`, and external feature assembly is not built. The runner never loads the label file: splits come from the frozen patient split file. Tests: `tests/test_eval_v2.py` (guards, label rules, comparator v2); 59/59 tests pass.
 - **Equivalence with the existing C+A+R results** (`runs/20261007-114553_pipeline-val-nostage8`, check `runs/20261007-114734_equivalence`), all 1,733 validate studies:
   - probabilities (44 columns incl. side head): same study set, max |diff| 4.3e-6 (float32 concept scores);
   - bands, sides, zones, normal calls: 0 differences;
@@ -726,27 +726,27 @@ Did not exist; trained now on the fit split (C on the inner holdout, Platt on ca
 - PROBE − HEAD: macro AUROC +0.0010 [−0.0031, +0.0052], macro ECE −0.0026 [−0.0053, +0.0005]; no finding's CI excludes 0.
 - On val the head is within the H3 margin (head − probe lower bound −0.0052 > −0.02). The test comparison is defined in EVAL_PLAN.md.
 
-### Evaluation script (`v2/scripts/evaluate.py`) and EVAL_PLAN.md
+### Evaluation script (`scripts/evaluate.py`) and EVAL_PLAN.md
 - Checked on val (`runs/20261007-115716_eval-dev-val`): reproduces macro AUROC 0.8344 / AUPRC 0.4911 / ECE 0.0236, 0 violations.
 - Normal call: rate 13.9%, precision 0.938, sensitivity 0.366.
 - Bootstrap ECE intervals are biased upward (macro ECE 0.0236 lies below its interval [0.026, 0.035]), so ECE comparisons use paired differences.
 - Radiologist labels: 596 of the 687 labelled studies are in our test split with a frontal image (9 are validate studies, 82 have no frontal image); same label rules as training, tested to reproduce `labels_v2` on val exactly.
 
-### Stage 8 rerun on validate, comparator v2 and feedback v2, up to 3 attempts (`v2/runs/20261007-120046_pipeline-val-v2`; written automatically)
+### Stage 8 rerun on validate, comparator v2 and feedback v2, up to 3 attempts (`runs/20261007-120046_pipeline-val-v2`; written automatically)
 - First-pass match **0.998** (was 0.875 with v1); final LLM match **1.000** (was 0.875); fallback **0.000** (was 0.125); rescued by a retry 4; template round trip **0.999** (was 0.962).
 - Remaining first-attempt mismatches: ['side:edema=3', 'omitted:pleural_other=1']; template mismatches: {'side:atelectasis': 1}.
 - LLM calls 1936, errors 0, HTTP status counts {'429': 199}. Normal-call rate 0.139.
 - Retry policy: kept at 3 attempts if retries rescue most first-attempt failures (see 'rescued by a retry' vs fallback); the user's rule is to cut to 1 attempt + template if they rescue few. Decision recorded in STATE.md by Claude after reading this.
 
-### Evaluation of the runner output on validate (`v2/runs/20261007-123526_eval-val-v2`; CheXpert-derived labels)
+### Evaluation of the runner output on validate (`runs/20261007-123526_eval-val-v2`; CheXpert-derived labels)
 - Macro AUROC 0.8344 [0.8128, 0.8554], AUPRC 0.4911, ECE 0.0236; hierarchy violations 0; normal call {'rate': 0.13906520484708598, 'n_called': 241, 'precision': 0.9377593360995851, 'sensitivity': 0.36628849270664504}.
 - H3 (dev, val): head − PROBE_EAR macro AUROC -0.0010 [-0.0052, +0.0031]; margin 0.02; non-inferior: True.
 - Report level vs the cached validate reference parses (positive mentions of our 13 findings, comparator v2 on both): micro F1 0.563, macro F1 0.366, RadGraph entity F1 (exact tokens + label) 0.165; n 1733. Per finding: `report_level.csv` in the eval run.
 
 ### External-run prep (user request 2026-10-07; nothing run on external images, no external labels)
-- Stage 4 region classifiers retrained with saved models: `v2/runs/20261007-121534_s4-saved` (same settings as `20261006-224243_lb-stage4`; labels of train/val only).
+- Stage 4 region classifiers retrained with saved models: `runs/20261007-121534_s4-saved` (same settings as `20261006-224243_lb-stage4`; labels of train/val only).
 - Retrained vs cached set-B scores: val max |diff| 0.0078, corr 1.000000; all non-fit max |diff| 0.0078; fit (out-of-fold) max |diff| 0.0156. Scores from the saved models vs the retrained run's own val scores: max |diff| 0.0039 (float16 storage).
 - External feature path on MIMIC val with the cached region scores (tests the duplicated transforms): probabilities max |diff| 6.85e-06; band differences 0, side 0, zone 0, normal call 0; template differences 0; ALL PASS True.
 - External feature path on MIMIC val with region scores from the saved models (the path an external run uses): probabilities max |diff| 2.47e-03; band differences 4, side 0, zone 0, normal call 0; template differences 4; ALL PASS False.
-- To use: set `inputs.s4_models_run` in `v2/configs/pipeline.yaml` to the retrained run (or pass `--s4-models-run`). External runs still need `--allow-external`, the mapping decisions and a decision on `external.view_default`.
+- To use: set `inputs.s4_models_run` in `configs/pipeline.yaml` to the retrained run (or pass `--s4-models-run`). External runs still need `--allow-external`, the mapping decisions and a decision on `external.view_default`.
 - Stage 8 attempts: kept at 3 (retries rescued 4/4 first-attempt failures; fallback 0). Decided 2026-10-07 14:50 under the user's rule.

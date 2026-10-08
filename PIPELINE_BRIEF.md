@@ -9,7 +9,7 @@ The brief below is the original plan. Where it conflicts with this list, this li
 3. **Decisions:** bands v2 = present / possible / absent / silent (Platt on calib, thresholds on thresh). The normal call is made when the root `any_abnormality` is in its absent band (2 % miss), not from every pathology being absent.
 4. **Preprocessing:** letterbox (the CLEAR authors' aspect-preserving resize + zero padding), not stretch.
 5. **Data roles:** the VinDr-CXR train detector (second A2) was not trained. The data has since been explored; `DATA.md` is the reference, not the section "The data on disk is unexplored".
-6. **Compute:** four allocations allowed on 2026-10-07 (user). Steps launch via `v2/scripts/launch.sh` / `orch_lib.sh` with a `run.sh` per run dir, not `bash -c`. Free space is about 42 GB (not ~100 GB).
+6. **Compute:** four allocations allowed on 2026-10-07 (user). Steps launch via `scripts/launch.sh` / `orch_lib.sh` with a `run.sh` per run dir, not `bash -c`. Free space is about 42 GB (not ~100 GB).
 7. **Labels:** still the 14 CheXpert labels (13 findings + root); the 19-finding extension has not been done.
 
 ## Fill in before starting (user)

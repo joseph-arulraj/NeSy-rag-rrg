@@ -38,13 +38,13 @@ sbatch --partition=slam_cpu --cpus-per-task=16 --mem=400G --signal=USR2 --time=2
 
 ```bash
 PY=/scratch/users/k23031260/.conda/envs/rrg/bin/python
-cd /scratch/prj/bhi_zihe_imaging/NeSy-rag-rrg/v2
+cd /scratch/prj/bhi_zihe_imaging/NeSy-rag-rrg
 RUN=runs/$(date +%Y%m%d-%H%M)_<name>; mkdir -p $RUN
 nohup srun --jobid=<id> --overlap bash -c "cd $PWD && $PY -u <script> --run-dir $RUN > $RUN/stdout.txt 2>&1" > $RUN/srun.out 2>&1 &
 squeue -s -j <id>
 ```
 
-The ten-second test (`v2/runs/20261006-0940_step-test`) printed live into the run directory and wrote STATUS DONE. Inside the step, `os.cpu_count()` reports 128 (the whole node), so always pass `--workers 16` explicitly. Scripts write `log.txt` themselves through `nesy.runlog`; `stdout.txt` duplicates it.
+The ten-second test (`runs/20261006-0940_step-test`) printed live into the run directory and wrote STATUS DONE. Inside the step, `os.cpu_count()` reports 128 (the whole node), so always pass `--workers 16` explicitly. Scripts write `log.txt` themselves through `nesy.runlog`; `stdout.txt` duplicates it.
 
 ## GPU step test (verified 2026-10-06 on 37814480)
 
@@ -54,7 +54,7 @@ The same detached pattern works on the GPU allocation: `setsid nohup srun --jobi
 
 - Login node: yes.
 - CPU compute nodes: yes. comp214 inside the step reached https://pypi.org (HTTP 200); the S3 downloads also ran on CPU nodes.
-- GPU compute node comp231 (job 37814480): **yes**, https://pypi.org returned HTTP 200 from inside the step (`v2/runs/*_gpu-step-test`).
+- GPU compute node comp231 (job 37814480): **yes**, https://pypi.org returned HTTP 200 from inside the step (`runs/*_gpu-step-test`).
 
 ## Other partitions seen
 

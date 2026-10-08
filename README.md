@@ -1,64 +1,82 @@
-# NeSy-RAG-RRG — evidence-based radiology report generation (v1 in progress)
+# NeSy-RAG-RRG: neurosymbolic chest X-ray report generation
 
-Specification: `docs/pipeline.md` (source of truth) · module design: `docs/architecture.md`.
+This project reads one frontal chest X-ray and writes a FINDINGS + IMPRESSION report in which every statement traces back to checkable evidence:
+- **neural models perceive**: a frozen CLEAR encoder, CheXmask anatomy and a region classifier;
+- **an explicit knowledge graph constrains and explains** the predictions: the hierarchy, decision rules and report rules, with an audit trail;
+- **a language model only phrases** what the graph already contains. A RadGraph round-trip check confirms it did, and falls back to the template if not.
 
-**Built so far:** N01 image loader · N03/N05 CLEAR encoder · N08 concept bank · N07 concept similarity ·
-N09 retrieval (FAISS index over the train split) · N12/N16/N19 concept grouping + temporal/polarity
-resolution (rev 3 — no Evidence A) · RadLex snapshot + client · concept-bank tagging pipeline (RadGraph +
-RadLex + finding vocabulary) · a concept explorer. Next: Evidence C (CBM) and Evidence D (N11/N15/N18).
+The original design and plan are in `PIPELINE_BRIEF.md`. Every term, rule ID (D1, G6, R2, P1, …) and stage is explained in **`GLOSSARY.md`**.
 
-## Setup (Mac and HPC)
+## How a study becomes a report
 
-```bash
-conda activate <your-env>
-pip install -e ./CLEAR            # the cloned CLEAR repo (not on PyPI)
-pip install -e '.[dev]'           # this project (torch, numpy, pillow, pyyaml, pytest)
-pip install -e '.[faiss]'         # HPC only: faiss-cpu for retrieval.backend: faiss
+```
+frontal image
+  ├─ CLEAR (DINOv2 ViT-B/14) embedding · 77 concept text embeddings → 77 concept scores           C
+  ├─ CheXmask lung / heart masks → 17 anatomy features (CTR, lung areas, heart shift, view, …)   A
+  └─ CLEAR patch tokens pooled in 9 CheXmask regions → Stage 4 region classifier → region scores R
+        ▼
+C+A+R head: linear concept bottleneck, factorised along the is_a hierarchy
+            (P(child | parent) × P(parent): 0 hierarchy violations by construction), Platt-calibrated, + side head
+        ▼
+belief graph: bands present / possible / absent / silent (D1), side (G6, R2), zone (G7), parent raise (D2),
+              normal call from the root (D3), case evidence as context (C1); every change in an audit trail
+        ▼
+template report (rules P1–P8) → LLM rewrite of the template's statements only → RadGraph check →
+accept / retry (≤ 3) / template fallback
 ```
 
-**All paths and tunables live in `configs/default.yaml`** (Mac profile). `configs/hpc.yaml` overlays it for the
-cluster: replace every `CHANGE_ME`, then pass `--config configs/hpc.yaml`. Single values can be overridden with
-`--set section.key=value`. Device is `auto` = CUDA > MPS > CPU; a forced device that is unavailable raises.
+**Validate results** (MIMIC-CXR, 1,733 studies; seen by the backbone):
+- **Head:** macro AUROC 0.834 over 14 outputs, ECE 0.024, 0 hierarchy violations.
+- **Normal call:** 13.9% of studies, precision 0.94.
+- **LLM report:** matches the graph on the first attempt 99.8% of the time; 0 fallbacks.
 
-### One-time, on a machine with internet (HPC login node)
-CLEAR builds its image tower from the DINOv2 *source code* (weights come from `best_model.pt`) via `torch.hub`,
-which needs GitHub. Compute nodes usually can't reach it, so cache it once:
+Every experiment, including the negative ones, is in `RESULTS.md`. The test sets have not been run yet; `EVAL_PLAN.md` fixes what will be computed.
+
+## Repository layout
+
+| Path | Contents |
+|---|---|
+| `nesy/` | Library: data and paths, knowledge graph loader, grounding, belief graph and rules, thresholds, report template, Stage 8 phrasing and RadGraph comparator, external-image features, label rules |
+| `scripts/` | Pipeline steps and experiments, one per stage; `run_pipeline.py` (end-to-end runner), `evaluate.py`, lane orchestrators `lane_*.sh` + `orch_lib.sh`, `launch.sh` |
+| `configs/` | `pipeline.yaml` (every runner switch: rules, report layout, Stage 8, external options), `report.yaml`, `llm.yaml` (endpoint; no key) |
+| `kg/` | Knowledge base in reviewable YAML: `findings.yaml` (findings, is_a, may_occur_in, pertinent negatives, report phrases, definitions), `anatomy.yaml` (part_of), `radlex_map.yaml`, `devices.yaml`, `imagenome_map.yaml`, `external_maps/`, `proposals/`. Described in `KG.md` |
+| `tests/` | Unit tests: one per rule, the label rules, the comparator, the runner and evaluation guards |
+| `legacy/` | The previous pipeline (code, configs, logs, outputs). Kept for reference; not used by the current code |
+| `data/`, `runs/`, `outputs/`, `archive/`, `models/`, `model_weights/` | Git-ignored. Derived data, run directories, review outputs, archived models, DenseNet weights, CLEAR weights. Contain or derive from credentialed MIMIC data |
+
+Project records: `STATE.md` (decisions and conventions), `QUEUE.md` (what runs and what waits), `RESULTS.md`, `DATA.md`, `COMPUTE.md`, `AUDIT.md` (the old pipeline's defects), `EVAL_PLAN.md`, `REVIEW_GUIDE.md`, `GLOSSARY.md`.
+
+## Setup
+
+- **Python:** the conda env `rrg`, called by full path: `/scratch/users/k23031260/.conda/envs/rrg/bin/python`.
+- **CLEAR:** cloned next to this repo and installed with `pip install -e ../CLEAR`.
+- **Raw datasets:** read in place from `/scratch/prj/bhi_zihe_imaging/mimic_cxr_full` (`nesy/paths.py`) and never copied.
+- **CLEAR weights and concept bank:** in `model_weights/`.
+- **LLM key:** read at run time from `~/.rrg_llm_key` (chmod 600) and never logged or committed.
+- **GPU work:** runs as steps inside held SLURM allocations (`COMPUTE.md`). `scripts/launch.sh <jobid> <name> <script.py> [args]` starts one logged run; `scripts/lane_*.sh` chain several.
+
+## Running
 
 ```bash
-python scripts/cache_dinov2.py --config configs/hpc.yaml     # then keep clear.local_files_only: true
+PY=/scratch/users/k23031260/.conda/envs/rrg/bin/python
+$PY -m pytest -q tests                                    # unit tests
+$PY -u scripts/run_pipeline.py --split val                # end to end on validate (Stage 8 needs a GPU for RadGraph)
+$PY -u scripts/run_pipeline.py --split val --no-stage8    # template reports only (CPU, ~1 min)
+$PY -u scripts/evaluate.py --pipeline-run runs/<run> --split val --labels chexpert
+$PY scripts/trace_samples.py --run runs/<run>            # readable traces -> outputs/trace_samples_val.md
 ```
 
-## Use
+Each run gets `runs/<timestamp>_<name>/` with `config.json` (all arguments, git commit, SLURM job, and for the runner a `manifest.json` of SHA-256 hashes of every model, threshold, KG and code file), `log.txt`, `metrics.jsonl` and `STATUS`.
 
-```bash
-python scripts/explore_concepts.py                      # profile of the 368,294 concepts -> outputs/concept_exploration.md
-python scripts/explore_concepts.py --grep "left lower lobe" --max 25
-python scripts/run_demo.py                              # image -> X (768-d) -> concept scores -> top-K, on the MIMIC sample
-python scripts/run_demo.py --config configs/hpc.yaml
-pytest -q                                               # real-asset tests skip themselves if files are missing
+**Guards:**
+- The MIMIC test split needs `--allow-test`.
+- The external sets (VinDr-CXR test, PadChest-GR) need `--allow-external`.
+- Both are refused by default and run only with the project owner's approval.
 
-python scripts/build_faiss_index.py                     # offline: encode every TRAIN study (fp32) -> <index_dir>/train.*
-python scripts/run_retrieval_demo.py --query-split test # top-k similar train studies + their reports for a few query images
-python scripts/run_retrieval_demo.py --query-split train --no-exclude   # shows the self/same-patient leak the exclusion removes
+## Data rules
 
-python scripts/build_radlex_snapshot.py                  # offline, once: parse the downloaded RadLex.owl -> model_weights/radlex_snapshot.json.gz
-python scripts/build_concept_tags.py                     # offline: RadGraph-parse all 368,294 concepts, tag anatomy/laterality/polarity/temporal/finding
-python scripts/build_concept_tags.py --limit 500         # smoke test (~10s); the full run is ~2h on CPU at the measured throughput, resumable if interrupted
-python scripts/run_evidence_b_demo.py                    # image -> X -> concept scores -> grouped, temporal/polarity-resolved findings (Evidence B)
-```
-
-## Retrieval protocol (decisions, see docs/pipeline.md section 10)
-- **Corpus = train split only**, one frontal image per study (PA preferred over AP, ties -> smallest `dicom_id`; lateral-only
-  studies excluded). Validate = tuning (calibration, thresholds, top-K, fusion, rule parameters). **Test is untouched until the
-  final evaluation.** Official MIMIC splits are patient-disjoint; the loader verifies it and raises if not.
-- **fp32 everywhere** on the embedding path (index and queries). `clear.precision` other than `fp32` is a config error.
-- **Same-patient exclusion** is exact (over-fetch by that patient's index rows), not just the same `dicom_id`.
-- **`retrieval.backend`**: `faiss` (IndexFlatIP, the design; HPC) or `numpy` (identical exact search as a matmul; default in the Mac
-  profile). On macOS, pip's `torch` and `faiss-cpu` abort when loaded in one process (clashing OpenMP runtimes).
-  A full `pytest -q` therefore skips the FAISS cases on a Mac; run them alone: `pytest tests/test_faiss_retrieval.py`. On the HPC
-  everything runs in one `pytest`.
-
-## Data handling
-`data/`, `model_weights/`, `outputs/`, `CLEAR/` and the RadLex downloads are git-ignored on purpose. MIMIC-CXR is
-under the PhysioNet credentialed-data agreement and must not be pushed to any remote. On the HPC, point
-`paths.*` at the real locations in `configs/hpc.yaml`.
+- Patient-level splits are frozen in `data/splits/mimic_splits_v1.parquet`.
+- Calibration, thresholds and metrics each use a different split.
+- MS-CXR and Chest ImaGenome gold-standard patients never enter training.
+- External test sets are never used for training, calibration, thresholds or model selection.
+- MIMIC-CXR, and everything derived from it (predictions, graphs, generated reports, traces that quote reference reports), is covered by the PhysioNet credentialed-data agreement and must not be pushed to any remote. That is why those directories are git-ignored.

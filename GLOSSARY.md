@@ -1,6 +1,6 @@
 # Glossary and stage guide (2026-10-08)
 
-This file explains every term, rule ID and stage used in the rebuilt pipeline (`v2/`): what it means, where it lives in the code, which stage it belongs to, and why it exists. Numbers are on MIMIC validate unless stated, and MIMIC numbers are always "seen by backbone".
+This file explains every term, rule ID and stage used in the rebuilt pipeline (``): what it means, where it lives in the code, which stage it belongs to, and why it exists. Numbers are on MIMIC validate unless stated, and MIMIC numbers are always "seen by backbone".
 
 **Watch out for three name clashes:**
 - **R1 / R2** mean two different things:
@@ -64,7 +64,7 @@ Stage numbers follow `PIPELINE_BRIEF.md` (0–7). "Stage 8" is our name for the 
 
 ## Part 3. Rule IDs (they appear in the audit trail of every belief graph)
 
-### D: decision rules (`v2/nesy/belief.py`, Stage 6)
+### D: decision rules (`nesy/belief.py`, Stage 6)
 | ID | Name | What it does | Why |
 |---|---|---|---|
 | **D1** | band | Puts each probability into **present** (p ≥ 0.70), **possible** (0.40 ≤ p < 0.70), **absent** (p at or below a threshold that misses ≤ 5% of positives on the thresh split; 2% for pneumothorax and the root) or **silent** (everything else, never mentioned). Where absent and possible overlap, absent wins. | Turns a probability into a statement with an explicit certainty. The absent band is how the report earns the right to say "No X". |
@@ -79,7 +79,7 @@ Stage numbers follow `PIPELINE_BRIEF.md` (0–7). "Stage 8" is our name for the 
 | **B2** | Edges only come from the KG (is_a, associated_with). | Nothing is invented. |
 | **B3** | Every change goes through `BeliefGraph.set()`, which writes an audit entry (rule, before, after, reason). | Traceability: every statement can be followed back. |
 
-### G: grounding rules (`v2/nesy/grounding.py`, `pipeline_graph.py`, Stage 6)
+### G: grounding rules (`nesy/grounding.py`, `pipeline_graph.py`, Stage 6)
 | ID | What it does | Active now? |
 |---|---|---|
 | **G1** | Map a localised region name to an anatomy node (`kg/anatomy.yaml`). | Not used: the current path produces no explicit localisations. |
@@ -96,12 +96,12 @@ Stage numbers follow `PIPELINE_BRIEF.md` (0–7). "Stage 8" is our name for the 
 | **R1** localisation support | A **present** finding whose relevant regions all score below its region threshold is demoted to **possible**. | Precision of present calls 0.788 → 0.796 (+0.008 [+0.003, +0.013]); sensitivity 0.362 → 0.346; 66 demoted | **Off** (your decision; flagged because the CI rule would keep it) |
 | **R2** side agreement | A side is stated only if the side head and the side implied by the region scores agree; otherwise the side is withheld. | Side accuracy 0.898 → 0.907 (n.s.); share of findings with a side 39% → 29% | **On** (your decision) |
 
-### C: case evidence (`v2/nesy/case_evidence.py`)
+### C: case evidence (`nesy/case_evidence.py`)
 | ID | What it does |
 |---|---|
 | **C1** | Attaches the 5 most similar fit-split studies (own patient excluded) with how many are positive per finding. Context only: it never changes a probability or band, is not sent to the LLM, and only appears in the report if `show_case_evidence` is on (it is off). Similar cases agree with the model's band in 88% of pairs. |
 
-### P: presentation rules (`v2/nesy/report.py`, Stage 7)
+### P: presentation rules (`nesy/report.py`, Stage 7)
 | ID | What it does |
 |---|---|
 | **P1** omit_parent | Omit a parent when a more specific child is stated with at least the same certainty ("consolidation", not "lung opacity and consolidation"). |
@@ -113,7 +113,7 @@ Stage numbers follow `PIPELINE_BRIEF.md` (0–7). "Stage 8" is our name for the 
 | **P7** impression | "No acute cardiopulmonary abnormality." if and only if D3 is true. If the root isn't absent and nothing is stated: "No finding meets the reporting threshold." |
 | **P8** zone | Lung-parenchyma findings only: state the zone together with a stated side ("in the right lower zone"); never a lobe. |
 
-### Label rules (`v2/scripts/build_labels.py`, `v2/nesy/labels.py`; Stage 0). Not the same as knowledge rules R1/R2.
+### Label rules (`scripts/build_labels.py`, `nesy/labels.py`; Stage 0). Not the same as knowledge rules R1/R2.
 | ID | What it does |
 |---|---|
 | R0 | Study without a CheXpert row → all labels masked. |
@@ -122,7 +122,7 @@ Stage numbers follow `PIPELINE_BRIEF.md` (0–7). "Stage 8" is our name for the 
 | R3 | A positive child makes every is_a ancestor positive. |
 | R4 | An uncertain child with a blank parent masks the parent, cascading upward. |
 
-### Stage 8 comparator mismatch kinds (`v2/nesy/rg_match.py`)
+### Stage 8 comparator mismatch kinds (`nesy/rg_match.py`)
 | Kind | Meaning |
 |---|---|
 | omitted | A statement the graph licenses is missing from the text. |
@@ -207,7 +207,7 @@ Stage numbers follow `PIPELINE_BRIEF.md` (0–7). "Stage 8" is our name for the 
 - **Normal call.** "No acute cardiopulmonary abnormality." On val it covers 13.9% of studies with precision 0.938.
 - **Pertinent negatives.** The few absent findings a radiologist routinely states (see P2).
 
-### Knowledge graph (`v2/kg/`, read by plain Python; no triple store, Prolog or LTN)
+### Knowledge graph (`kg/`, read by plain Python; no triple store, Prolog or LTN)
 - **findings.yaml.** The 14 nodes, each with:
   - a label;
   - the CheXpert column;
@@ -256,6 +256,6 @@ Stage numbers follow `PIPELINE_BRIEF.md` (0–7). "Stage 8" is our name for the 
 - **Manifest** (`manifest.json` in each runner run). The SHA-256 of every model, threshold, KG and code file, used as the freeze record.
 - **Equivalence check.** Proves the runner reproduces earlier results: probabilities within 1e-5, identical bands and templates.
 - **External feature path** (`nesy/ext_features.py`). Builds C, A and R for non-MIMIC images from cached features and the **retrained Stage 4 models** (`runs/20261007-121534_s4-saved`).
-- **Run directory** (`v2/runs/<time>_<name>/`): `config.json`, `log.txt`, `metrics.jsonl`, `STATUS` (RUNNING / DONE / FAILED).
+- **Run directory** (`runs/<time>_<name>/`): `config.json`, `log.txt`, `metrics.jsonl`, `STATUS` (RUNNING / DONE / FAILED).
 - **Lane / orchestrator** (`scripts/lane_*.sh`). A chain of SLURM steps run unattended; it logs START/END to `orchestrator.log`.
 - **Allocations.** Held SLURM jobs (H100, L40S, CPU) that steps run inside. See COMPUTE.md.

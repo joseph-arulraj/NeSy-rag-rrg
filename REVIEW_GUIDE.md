@@ -33,10 +33,10 @@ The ladder below is copied from `RESULTS.md` (letterbox preprocessing; macro ove
 - **Normal call:** 13.9% of studies, precision 0.938, sensitivity 0.366.
 - **Stage 8 (LLM phrasing with the RadGraph guard):** first-pass match 0.998, final match 1.000, fallback 0, template round trip 0.999. Before the comparator fix these were 0.875 / 0.875 / 0.125 / 0.962.
 - **Report level against the radiologist reports** (positive mentions of our 13 findings): micro F1 0.563, macro F1 0.366, RadGraph entity F1 0.165. These are the first numbers and there is no baseline yet.
-- **Per finding:** AUROC per finding is in `v2/runs/20261007-123526_eval-val-v2/per_finding.csv`; band precision and sensitivity in `bands.csv` (same folder). Fracture (17 positives) and pleural other (14) are too rare to read.
+- **Per finding:** AUROC per finding is in `runs/20261007-123526_eval-val-v2/per_finding.csv`; band precision and sensitivity in `bands.csv` (same folder). Fracture (17 positives) and pleural other (14) are too rare to read.
 
 ## 3. Generated reports with full traces (10 min)
-**`v2/outputs/trace_samples_val.md`** contains 8 validate studies, one per situation:
+**`outputs/trace_samples_val.md`** contains 8 validate studies, one per situation:
 - a normal call;
 - one finding;
 - several findings with side and zone;
@@ -56,7 +56,7 @@ Each trace shows, in order:
 7. each LLM attempt with the comparator's verdict;
 8. the final report.
 
-The raw files for all 1,733 studies are in `v2/runs/20261007-120046_pipeline-val-v2/`:
+The raw files for all 1,733 studies are in `runs/20261007-120046_pipeline-val-v2/`:
 - `graphs.jsonl`: the belief graph and audit trail for every study;
 - `stage8.jsonl`: the prompt, the attempts and the RadGraph claims;
 - `reports.jsonl`: the final reports.
@@ -71,14 +71,14 @@ So the zone never reaches the report. This is consistent with the rules, but you
 ## 4. Approvals (20 min): what to read and the reference to judge it by
 | Decision | File to review | Reference |
 |---|---|---|
-| External label mappings (VinDr test, PadChest-GR) | Review sheet https://claude.ai/artifact/C1mcphtwGXA1MPJjVwavV9 (or `v2/kg/external_maps/*.yaml`) | Label counts in `DATA.md` (end) |
-| Missing view on external images | `v2/configs/pipeline.yaml` → `external.view_default` (PA assumed) | `EVAL_PLAN.md` "External sets" |
+| External label mappings (VinDr test, PadChest-GR) | Review sheet https://claude.ai/artifact/C1mcphtwGXA1MPJjVwavV9 (or `kg/external_maps/*.yaml`) | Label counts in `DATA.md` (end) |
+| Missing view on external images | `configs/pipeline.yaml` → `external.view_default` (PA assumed) | `EVAL_PLAN.md` "External sets" |
 | Retrained Stage 4 models for external runs | RESULTS.md "External-run prep": 4 band changes in 24,262, max prob diff 0.0025 | (recommend accept) |
 | Test evaluation plan, H3 direction, primary labels (596 radiologist-labelled studies) | `EVAL_PLAN.md` | `PIPELINE_BRIEF.md` build-stage table |
 | Go-ahead for the MIMIC test run; permission to RadGraph-parse the test reports | `EVAL_PLAN.md` | |
-| Report layout and pertinent negatives (RadReport proposals) | `v2/kg/proposals/radreport_comparison.md` | `v2/kg/sources/Rad Chest 2 Views.html` |
-| R1 off / R2 on | `v2/configs/pipeline.yaml` `rules`; numbers in RESULTS.md "Final head = C+A+R" | |
-| Knowledge base content marked "needs review" | `v2/KG.md` (what each table is, where it comes from, what is unreviewed); then `v2/kg/findings.yaml` (is_a, may_occur_in, pertinent negatives, report phrases, glossary definitions) and `v2/kg/radlex_map.yaml` | `v2/kg/sources/Fleischner Society Glossary of Terms for Thoracic Imaging.pdf`; RadLex IDs; `RESULTS.md` "Knowledge-base tasks 1–6" |
-| Commit v2 to git before the freeze | none | `EVAL_PLAN.md` "What is frozen" |
+| Report layout and pertinent negatives (RadReport proposals) | `kg/proposals/radreport_comparison.md` | `kg/sources/Rad Chest 2 Views.html` |
+| R1 off / R2 on | `configs/pipeline.yaml` `rules`; numbers in RESULTS.md "Final head = C+A+R" | |
+| Knowledge base content marked "needs review" | `KG.md` (what each table is, where it comes from, what is unreviewed); then `kg/findings.yaml` (is_a, may_occur_in, pertinent negatives, report phrases, glossary definitions) and `kg/radlex_map.yaml` | `kg/sources/Fleischner Society Glossary of Terms for Thoracic Imaging.pdf`; RadLex IDs; `RESULTS.md` "Knowledge-base tasks 1–6" |
+| Commit the restructured repo before the test run (clean commit in the manifest) | none | `EVAL_PLAN.md` "What is frozen" |
 
 Reply with your decisions in any form, for example "1 yes, 2 PA, …". Claude applies them and updates QUEUE.md and STATE.md.

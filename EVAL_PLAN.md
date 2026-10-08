@@ -4,13 +4,13 @@ Nothing in this plan has been run on test data. The scripts named below have bee
 
 ## What is frozen before a test run
 
-- **Pipeline:** `v2/configs/pipeline.yaml`, run by `v2/scripts/run_pipeline.py`. Each run's `config.json` / `manifest.json` records the git commit and the SHA-256 of every file the run depends on, which makes it the freeze manifest:
+- **Pipeline:** `configs/pipeline.yaml`, run by `scripts/run_pipeline.py`. Each run's `config.json` / `manifest.json` records the git commit and the SHA-256 of every file the run depends on, which makes it the freeze manifest:
   - the head model and calibrators (`model.joblib`) and its thresholds (`thresholds_4band.json`);
   - the region scores and region thresholds;
   - the concept list and embeddings, the CheXmask features and the case table;
   - every KG YAML, the configs and the code files.
 
-  The git tree is currently dirty because v2 is not committed. Committing v2 before the freeze would make the commit field meaningful. The file hashes are complete either way.
+  The code is committed (2026-10-08). Runs made before the commit record `de121e6…+dirty`; commit before the test run so its manifest names a clean commit. The file hashes are complete either way.
 - **Configuration switches (current values):**
   - R1 off, R2 on;
   - report layout `current` (RadReport proposals not applied);
@@ -66,6 +66,6 @@ When unblocked, the metrics are the same as for MIMIC test, restricted to the fi
 
 | Purpose | Script | Checked on validate |
 |---|---|---|
-| End-to-end run | `v2/scripts/run_pipeline.py` | yes: equal to the existing C+A+R results (probabilities within 4.3e-6; bands, sides, zones, normal calls and templates identical) |
-| Evaluation | `v2/scripts/evaluate.py` | yes: reproduces head macro AUROC 0.8344 / AUPRC 0.4911 / ECE 0.0236 |
-| H3 comparator | `v2/scripts/probe.py --features emb,chexmask,s4` | trained, val metrics in RESULTS.md |
+| End-to-end run | `scripts/run_pipeline.py` | yes: equal to the existing C+A+R results (probabilities within 4.3e-6; bands, sides, zones, normal calls and templates identical) |
+| Evaluation | `scripts/evaluate.py` | yes: reproduces head macro AUROC 0.8344 / AUPRC 0.4911 / ECE 0.0236 |
+| H3 comparator | `scripts/probe.py --features emb,chexmask,s4` | trained, val metrics in RESULTS.md |

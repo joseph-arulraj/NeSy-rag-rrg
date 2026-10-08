@@ -75,14 +75,14 @@ Thumbs.db
 *.swp
 
 # =============================================================================
-# v2 rebuild (added 2026-10-08): run outputs, archives and weights stay out of git.
+# Current pipeline (added 2026-10-08): run outputs, archives and weights stay out of git.
 # Run directories hold predictions, region scores, belief graphs and Stage 8 outputs derived from
 # credentialed MIMIC data (and some quote reference reports); archives hold stretch-era models and
-# predictions; v2/data and v2/outputs are already covered by data/ and outputs/ above.
+# predictions; data/ and outputs/ (also legacy/outputs) are already covered by data/ and outputs/ above.
 # =============================================================================
-v2/runs/
-v2/archive/
-v2/models/
+/runs/
+/archive/
+/models/
 slurm-*.out
 *.joblib
 *.npy
@@ -94,7 +94,7 @@ slurm-*.out
 *.jsonl.gz
 
 # Third-party reference documents (copyrighted; kept locally only)
-v2/kg/sources/
+/kg/sources/
 Fleischner Society Glossary of Terms for Thoracic Imaging.pdf
 Fleischner Society Guidelines.html
 Rad Chest 2 Views.html

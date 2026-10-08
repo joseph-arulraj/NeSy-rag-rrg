@@ -1,0 +1,36 @@
+# End-to-end pipeline configuration (scripts/run_pipeline.py). Every undecided choice is a switch here, not code.
+# Changing a switch changes the run's manifest (config.json: hashes of every model, threshold and KG file).
+version: 1
+
+inputs:
+  embedding: letterbox                       # NESY_EMB; CLEAR authors' aspect-preserving preprocessing
+  head_run: runs/20261007-065311_a1-s3-s4b   # final head C+A+R (user decision 2026-10-07): model.joblib, thresholds_4band.json
+  s4_run: runs/20261006-224243_lb-stage4     # Stage 4 region scores (A2)
+  s4_sets: B                                 # CheXmask-derived regions
+  s4_models_run: null                        # Stage 4 run with saved models (models.joblib), for region scores of images not in s4_run (external sets)
+  region_thresholds_from: runs/20261007-093124_rules-set   # rules_eval.json: per-finding region thresholds (fitted on thresh)
+  cases: data/features/cases_letterbox_k5.parquet          # case-based evidence (k = 5 fit-split neighbours, own patient excluded)
+
+rules:
+  R1_localisation_support: false   # user decision 2026-10-07 (CI rule favoured it; flagged for revisit)
+  R2_side_agreement: true          # user decision 2026-10-07
+
+report:
+  layout: current                  # current | radreport (RadReport proposals: NOT approved; not implemented)
+  show_case_evidence: false        # "seen in N of k similar cases" lines; context only
+
+stage8:
+  enabled: true
+  llm_model_from: configs/llm.yaml   # llm.base_url / llm.model (KCL arc:nano); key from key_file at run time, never logged
+  key_file: ~/.rrg_llm_key
+  max_attempts: 3                  # LLM attempts before the template fallback (set after the 2026-10-07 retry diagnosis)
+  retry: feedback                  # feedback = resend with the named mismatches; none = no retry
+  threads: 2                       # 4 concurrent calls hit HTTP 429
+  radgraph_model: modern-radgraph-xl
+  comparator: v2                   # v1 = rg_match as used by run 20261007-093237_stage8-car; v2 = fixed lexicon (2026-10-07)
+
+guards:
+  allowed_splits: [train, calib, thresh, val]   # test needs --allow-test; external sets need --allow-external
+
+external:                          # used only with --allow-external (or --feature-path external on MIMIC for checks)
+  view_default: PA                 # UNDECIDED: VinDr / PadChest-GR have no view field; PA assumed (VinDr docs: PA). Sets view_ap = 0.

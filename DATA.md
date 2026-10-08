@@ -69,8 +69,8 @@ Counts (V): 377,110 images, 227,835 studies, 65,379 patients. These equal the pu
 - `OriginalResolution/{ChestX-Ray8, CheXpert, MIMIC-CXR-JPG, Padchest, VinDr-CXR}.csv` and `Preprocessed/{CheXpert, MIMIC-CXR-JPG, Padchest, VinDr-CXR}.csv` (1024×1024). MIMIC original 13.0 GB, preprocessed 4.4 GB; VinDr 0.95 / 0.32 GB; Padchest 4.6 / 1.9 GB.
 - Columns: `<id>, Dice RCA (Mean), Dice RCA (Max), Landmarks, Left Lung, Right Lung, Heart, Height, Width`. The id column is `dicom_id` (MIMIC), `image_id` (VinDr), `ImageID` (Padchest). **V**
 - Masks are RLE strings; landmarks are a flat x,y list. README says to keep masks with Dice RCA (Mean) ≥ 0.7. Published total 657,566 masks across five sources (README).
-- Rows per file: the MIMIC preprocessed file has **243,334 rows = exactly the 243,334 MIMIC PA/AP images**, with no duplicates. All three masks are present for every row; 97.6 % have Dice RCA (Mean) ≥ 0.7. (Run `v2/runs/20261006-0940_chexmask-features`.)
-- Derived features: `v2/data/features/chexmask_mimic.parquet`. These are named side and CTR features, not masks. `ctr_reliable_view` is False for AP views; those rows are flagged, not dropped.
+- Rows per file: the MIMIC preprocessed file has **243,334 rows = exactly the 243,334 MIMIC PA/AP images**, with no duplicates. All three masks are present for every row; 97.6 % have Dice RCA (Mean) ≥ 0.7. (Run `runs/20261006-0940_chexmask-features`.)
+- Derived features: `data/features/chexmask_mimic.parquet`. These are named side and CTR features, not masks. `ctr_reliable_view` is False for AP views; those rows are flagged, not dropped.
 - **Side convention verified on a 2,000-image sample:** the "Left Lung" mask centroid is on the image right in 100% of them, so "Left" is the patient's left. The landmarks are ordered right lung (44 points, image left), left lung (50), heart (26).
 - Landmark format differs between files: a flat "x,y,…" string in Preprocessed; a numpy-printed `[[x y] …]` array in OriginalResolution.
 - Preprocessed (1024²) and OriginalResolution give the same ratio features: on 100 images, median \|ΔCTR\| was 0.0004 (max 0.0034). Step 4 therefore uses Preprocessed.
@@ -113,10 +113,10 @@ Counts (V): 377,110 images, 227,835 studies, 65,379 patients. These equal the pu
 
 - `grounded_reports_20240819.json`: list of 4,555 studies {StudyID, ImageID, PreviousStudyID, PreviousImageID, findings: [{sentence_en, sentence_es, abnormal, boxes (normalised xyxy), extra_boxes, labels, locations, progression}]}.
 - `master_table.csv.zip` → `master_table.csv`: 8,787 rows (one per finding sentence), 4,555 images, 4,459 patients. Columns include StudyID, ImageID, PatientID, label, label_group, locations, prior_study, split (train 6,153 / validation 872 / test 1,762 rows), study_is_benchmark (all True). For us, the whole set is an external test set and its internal split is ignored.
-- Images: `Padchest_GR_files/PadChest_GR.zip.001–.037` (37 parts, 38.5 GB). This is a split zip of 4,555 PNGs: 4,202 stored, 353 deflated; 38.53 GB uncompressed. The central directory reads correctly and the last member passes its CRC check. `v2/nesy/multizip.py` reads any member in memory; one stored and one deflated member decoded fine.
+- Images: `Padchest_GR_files/PadChest_GR.zip.001–.037` (37 parts, 38.5 GB). This is a split zip of 4,555 PNGs: 4,202 stored, 353 deflated; 38.53 GB uncompressed. The central directory reads correctly and the last member passes its CRC check. `nesy/multizip.py` reads any member in memory; one stored and one deflated member decoded fine.
 - **PNGs are 16-bit (`I;16`)**, e.g. 1824×1652. Windowing to 8-bit must be decided before CLEAR sees them.
 - `PadChest_GR_progression_prior_studies/…zip.001–.009`: 1,446 prior-study PNGs (9.0 GB), not needed.
-- **Extraction would leave ~11 GB free, so do not extract.** Instead, read PNGs directly from the split archive (`v2/nesy/multizip.py`).
+- **Extraction would leave ~11 GB free, so do not extract.** Instead, read PNGs directly from the split archive (`nesy/multizip.py`).
 - Join to CheXmask Padchest.csv by `ImageID`. Assumed, since the CheXmask Padchest file covers the original PadChest; the overlap has not been counted yet.
 
 ## Extras not in the brief
@@ -137,9 +137,9 @@ Counts (V): 377,110 images, 227,835 studies, 65,379 patients. These equal the pu
 1. ~~Report text~~: resolved, the user downloaded `mimic-cxr-reports.zip`.
 2. ~~pyarrow and pydicom~~: installed into `rrg` 2026-10-06 (pyarrow 25.0.1, pydicom 3.0.2; pip dry-run showed no other package changes).
 
-## Manifests (Stage 0 step 2) — built 2026-10-06, run `v2/runs/20261006-0918_manifests` (+ `…0919_manifests` for PadChest-GR)
+## Manifests (Stage 0 step 2) — built 2026-10-06, run `runs/20261006-0918_manifests` (+ `…0919_manifests` for PadChest-GR)
 
-All in `v2/data/manifests/`. Read them only through `v2/nesy/manifests.py: load(name)`, which joins the project split.
+All in `data/manifests/`. Read them only through `nesy/manifests.py: load(name)`, which joins the project split.
 
 | Manifest | Rows | Unit | Count checks |
 |---|---|---|---|
@@ -152,20 +152,20 @@ All in `v2/data/manifests/`. Read them only through `v2/nesy/manifests.py: load(
 
 Raw CheXpert values (1 / 0 / −1 / NaN) are kept in `cx_*`. The "blank = negative" rule is applied when labels are loaded, not in the manifest. 8 MIMIC studies have no CheXpert row.
 
-## Derived features (`v2/data/features/`)
+## Derived features (`data/features/`)
 
 - `chexmask_mimic.parquet`: side and CTR features for 243,334 MIMIC frontal images (see the CheXmask section).
 - `imagenome_regions.parquet`: 8,695,606 rows, one per (dicom_id, region), for 243,310 scene graphs. Boxes are given in original pixels (`original_x1..y2`) and in the 224² frame. **There are 36 regions per image** (`semantics/objects_detectable_by_bbox_pipeline_v1.txt`), not the 29 the brief mentions; choose the subset for Stage 4.
 - `imagenome_region_labels.parquet`: 7,306,391 rows (dicom_id, region, category, label, n_yes, n_no) from the silver NLP over reports. Categories: anatomicalfinding, nlp, tubesandlines, disease, technicalassessment, device, and others.
 - `imagenome_meta.parquet`: per-graph viewpoint, IDs, counts.
-- `radgraph_reports/shard_*.jsonl.gz`: RadGraph (modern-radgraph-xl) entities for the FINDINGS+IMPRESSION text of MIMIC reports. **Stopped at 6,000 studies (3 shards)** when the user ruled out parsing the corpus (2026-10-06); not used. `radgraph_val_refs/`: the 1,733 validate reference reports, parsed once and cached (2026-10-07, `v2/runs/20261007-063428_radgraph-val-refs`).
+- `radgraph_reports/shard_*.jsonl.gz`: RadGraph (modern-radgraph-xl) entities for the FINDINGS+IMPRESSION text of MIMIC reports. **Stopped at 6,000 studies (3 shards)** when the user ruled out parsing the corpus (2026-10-06); not used. `radgraph_val_refs/`: the 1,733 validate reference reports, parsed once and cached (2026-10-07, `runs/20261007-063428_radgraph-val-refs`).
 
 ## CheXmask coverage of the external sets (checked 2026-10-06)
 - VinDr-CXR: all 18,000 images (15,000 train, 3,000 test) are in `CheXmask/OriginalResolution/VinDr-CXR.csv` (key `image_id`).
 - PadChest-GR: **4,310 of 4,555 images (94.6 %)** are in `CheXmask/OriginalResolution/Padchest.csv` (key `ImageID`, same file names as PadChest-GR). 245 images have no CheXmask masks; their CheXmask-region features will be missing (flagged, never zero).
 
 ## Study set used by every model (verified 2026-10-07)
-One frontal image per study: the image the CLEAR embeddings were computed from (`v2/data/embeddings/clear_frontal_lb_v1_index.parquet`; `nesy/data.py: study_table()`). Lateral images are never used. 218,139 studies:
+One frontal image per study: the image the CLEAR embeddings were computed from (`data/embeddings/clear_frontal_lb_v1_index.parquet`; `nesy/data.py: study_table()`). Lateral images are never used. 218,139 studies:
 
 | split | studies | AP | PA |
 |---|---|---|---|
@@ -178,7 +178,7 @@ One frontal image per study: the image the CLEAR embeddings were computed from (
 
 The fit split's inner holdout (5% of fit patients by hash, `scripts/probe.py: inner_holdout`) is 8,915 studies; it chooses C for the linear heads and the epoch for the DenseNet and MLP baselines.
 
-## Derived data added 2026-10-06/07 (all under `v2/data/`)
+## Derived data added 2026-10-06/07 (all under `data/`)
 - `image_cache_256/`: the study set above, letterboxed to 256 px (LANCZOS, aspect kept, zero pad), 54 compressed uint8 shards + `ids.parquet` in study-table order; **8.9 GB**; checked: same image as the CLEAR embedding for 218,139/218,139 studies. Used by the DenseNet-121 baseline.
 - `features/regions/mimic_full_lb_shards/`: letterbox region features (global + 36 ImaGenome + 9 CheXmask region vectors, float16) for 218,187 MIMIC frontal images, 15.4 GB. Region features missing for the 242 left/right-check failures and, for CheXmask regions, the 4,485 images with CheXmask Dice RCA < 0.7. CheXmask letterbox weights in `mimic_full_lb_p{0,1}_chunks` (compressed).
 - `features/regions/ext_{vindr_test,padchest_gr}_lb_shards/`: external caches (letterbox, percentile windowing; global + 9 CheXmask regions): VinDr test 3,000 (15 with region features missing), PadChest-GR 4,555 (248 missing: 245 without masks, 3 RCA < 0.7). Caching only, never evaluated.
@@ -209,11 +209,11 @@ Stretch region features (`mimic_full_shards`, 15.4 GB), stretch CheXmask weights
 - Inferred, not established: that the PRE-TRAINING data loader read the padded HDF5. The released repo has no pre-training loader (`examples/train.py` only loads checkpoints). The inference rests on the preprocessing script being the repo's data pipeline at 448 px and every released evaluation loader reading its padded output. The paper's "resized to 448 × 448 with bicubic interpolation" matches the `Resize(448, BICUBIC)` applied to already-padded 448-px images (a no-op resize), and also matches `hub.py`'s stretch; the text alone does not settle which.
 
 ## Added 2026-10-07 (later)
-- `v2/runs/20261007-081007_densenet-external/predictions_{vindr,padchest_gr}.parquet`: DenseNet-121 external predictions (image_id, read_ok, p_ and logit_ per finding); VinDr test 3,000, PadChest-GR 4,555; no labels.
-- `v2/models/densenet121-a639ec97.pth`: torchvision ImageNet DenseNet-121 weights (downloaded from download.pytorch.org; hash prefix matches the file name).
-- `v2/archive/stretch_v1/`: stretch-variant predictions and models (0.615 GB; see RESULTS.md).
-- `v2/kg/sources/`: Fleischner glossary PDF, Fleischner nodule guidelines HTML (not used), RadReport "Rad Chest 2 Views" HTML (copies; the user's originals stay in the repo root).
+- `runs/20261007-081007_densenet-external/predictions_{vindr,padchest_gr}.parquet`: DenseNet-121 external predictions (image_id, read_ok, p_ and logit_ per finding); VinDr test 3,000, PadChest-GR 4,555; no labels.
+- `models/densenet121-a639ec97.pth`: torchvision ImageNet DenseNet-121 weights (downloaded from download.pytorch.org; hash prefix matches the file name).
+- `archive/stretch_v1/`: stretch-variant predictions and models (0.615 GB; see RESULTS.md).
+- `kg/sources/`: Fleischner glossary PDF, Fleischner nodule guidelines HTML (not used), RadReport "Rad Chest 2 Views" HTML (copies; the user's originals stay in the repo root).
 - Free space after today's work: about 42 GB (1000 GB quota).
 
-### External test label counts (2026-10-07, user request; `v2/runs/20261007-112537_external-label-counts`)
-External test labels read once, for counts only (no predictions, no metrics, nothing selected), to support review of `v2/kg/external_maps/*.yaml`. VinDr test: 3,000 images, 2,051 "No finding", 182 with only unmapped labels; positives per finding (direct / with is_a): lung opacity 462, atelectasis 86, consolidation 96 / 250 (VinDr "Pneumonia" propagates via is_a), pneumonia 246, edema 0, lung lesion 184, cardiomegaly 309, effusion 111, pleural other 169, pneumothorax 18, fracture 13. PadChest-GR: 4,555 images, 1,456 normal, 1,307 with only unmapped labels; lung opacity 734 / 839, atelectasis 259, consolidation 184, lung lesion 237, enlarged cardiomediastinum 538, cardiomegaly 498, effusion 372, pleural other 240, pneumothorax 11, fracture 190, support devices 345. Review sheet: https://claude.ai/artifact/C1mcphtwGXA1MPJjVwavV9
+### External test label counts (2026-10-07, user request; `runs/20261007-112537_external-label-counts`)
+External test labels read once, for counts only (no predictions, no metrics, nothing selected), to support review of `kg/external_maps/*.yaml`. VinDr test: 3,000 images, 2,051 "No finding", 182 with only unmapped labels; positives per finding (direct / with is_a): lung opacity 462, atelectasis 86, consolidation 96 / 250 (VinDr "Pneumonia" propagates via is_a), pneumonia 246, edema 0, lung lesion 184, cardiomegaly 309, effusion 111, pleural other 169, pneumothorax 18, fracture 13. PadChest-GR: 4,555 images, 1,456 normal, 1,307 with only unmapped labels; lung opacity 734 / 839, atelectasis 259, consolidation 184, lung lesion 237, enlarged cardiomediastinum 538, cardiomegaly 498, effusion 372, pleural other 240, pneumothorax 11, fracture 190, support devices 345. Review sheet: https://claude.ai/artifact/C1mcphtwGXA1MPJjVwavV9

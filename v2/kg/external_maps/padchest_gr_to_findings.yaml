@@ -1,0 +1,58 @@
+# PadChest-GR (finding-sentence labels) -> our findings. DRAFT — FOR RADIOLOGIST REVIEW. Not used for
+# any metric until reviewed. A study is positive for a finding if any of its sentences carries a mapped
+# label; is_a closure applies. PadChest-GR reports describe all findings the radiologist saw, so an
+# unmentioned finding is treated as negative, EXCEPT where `evaluable: false`.
+version: 0.1
+status: draft-for-review
+findings:
+  lung_opacity:
+    source: "PadChest-GR label list; mapping author-curated, needs review"
+    from: ["infiltrates", "increased density", "alveolar pattern", "consolidation", "ground glass pattern", "atelectasis",
+           "segmental atelectasis", "laminar atelectasis", "lobar atelectasis", "total atelectasis", "atelectasis basal",
+           "nodule", "pulmonary mass", "multiple nodules", "mass"]
+    evaluable: true
+    rationale: "Parenchymal opacity terms; children propagate by is_a. REVIEW 'interstitial pattern' (not mapped)."
+  atelectasis:
+    source: "PadChest-GR label list; mapping author-curated, needs review"
+    from: ["atelectasis", "segmental atelectasis", "laminar atelectasis", "lobar atelectasis", "total atelectasis", "atelectasis basal"]
+    evaluable: true
+    rationale: "All atelectasis labels. Laminar (plate) atelectasis included; REVIEW."
+  consolidation: {from: ["consolidation", "alveolar pattern", "air bronchogram"], evaluable: true, rationale: "Alveolar pattern = airspace consolidation. REVIEW.", source: "PadChest-GR label list; mapping author-curated, needs review"}
+  pneumonia: {from: [], evaluable: false, rationale: "PadChest-GR has no pneumonia label (findings only, no diagnoses). Exclude.", source: "PadChest-GR label list; mapping author-curated, needs review"}
+  edema: {from: ["kerley lines"], evaluable: false, rationale: "No edema label; 'kerley lines' (4) and 'vascular redistribution' are too sparse/indirect. Exclude.", source: "PadChest-GR label list; mapping author-curated, needs review"}
+  lung_lesion:
+    source: "PadChest-GR label list; mapping author-curated, needs review"
+    from: ["nodule", "pulmonary mass", "multiple nodules", "mass", "calcified granuloma", "granuloma"]
+    evaluable: true
+    rationale: "Nodules/masses incl. granulomas. EXCLUDED: 'pseudonodule', 'nipple shadow', 'end on vessel' (explicitly not lesions). REVIEW granulomas."
+  enlarged_cardiomediastinum:
+    source: "PadChest-GR label list; mapping author-curated, needs review"
+    from: ["cardiomegaly", "mediastinal enlargement", "superior mediastinal enlargement", "mediastinal mass"]
+    evaluable: true
+    rationale: "REVIEW: 'aortic elongation'/'aortic button enlargement' are NOT mapped."
+  cardiomegaly: {from: ["cardiomegaly"], evaluable: true, rationale: "Direct. 'pericardial effusion' (2) not mapped.", source: "PadChest-GR label list; mapping author-curated, needs review"}
+  pleural_effusion:
+    source: "PadChest-GR label list; mapping author-curated, needs review"
+    from: ["pleural effusion", "costophrenic angle blunting", "loculated pleural effusion", "loculated fissural effusion", "hydropneumothorax"]
+    evaluable: true
+    rationale: "Blunting mapped to effusion as in CheXpert. REVIEW."
+  pleural_other:
+    source: "PadChest-GR label list; mapping author-curated, needs review"
+    from: ["apical pleural thickening", "pleural thickening", "calcified pleural thickening", "calcified pleural plaques", "pleural mass"]
+    evaluable: true
+    rationale: "Pleural thickening/plaques. Fissure thickening NOT mapped. REVIEW apical cap (very common, often incidental)."
+  pneumothorax: {from: ["pneumothorax", "hydropneumothorax"], evaluable: true, rationale: "Direct; only 12 positives.", source: "PadChest-GR label list; mapping author-curated, needs review"}
+  fracture:
+    source: "PadChest-GR label list; mapping author-curated, needs review"
+    from: ["callus rib fracture", "rib fracture", "vertebral fracture", "clavicle fracture", "humeral fracture", "fracture", "vertebral anterior compression", "vertebral compression"]
+    evaluable: true
+    rationale: "Includes healed (callus) and compression fractures, like CheXpert. REVIEW."
+  support_devices:
+    source: "PadChest-GR label list; mapping author-curated, needs review"
+    from: ["pacemaker", "electrical device", "dual chamber device", "single chamber device", "dai", "central venous catheter via jugular vein",
+           "central venous catheter via subclavian vein", "reservoir central venous catheter", "central venous catheter", "tracheostomy tube",
+           "endotracheal tube", "NSG tube", "chest drain tube", "catheter", "gastrostomy tube", "ventriculoperitoneal drain tube",
+           "artificial heart valve", "artificial aortic heart valve", "artificial mitral heart valve", "sternotomy", "aortic endoprosthesis"]
+    evaluable: true
+    rationale: "Tubes, lines, cardiac devices, valves, sternotomy wires. REVIEW: osteosynthesis material, suture material, mammary/humeral prostheses NOT mapped."
+no_finding: {from: ["Normal"], rationale: "Compare against our derived no_finding.", source: "PadChest-GR label list; mapping author-curated, needs review"}

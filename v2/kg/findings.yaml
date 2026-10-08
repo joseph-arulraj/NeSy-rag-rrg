@@ -1,0 +1,182 @@
+# Knowledge graph: findings, is_a hierarchy, may_occur_in, associated_with, definitions, phrasing and
+# pertinent negatives. Reviewable; every edge and rule has an id and a rationale. Validated on load by
+# nesy/kg.py (schema, references, acyclicity). Anatomy and part_of live in anatomy.yaml (from RadLex).
+version: 0.5
+# lateralisable: whether the side head predicts a side for this finding. Non-lateralisable findings never get one.
+side_min_confidence: 0.8   # a side is stated in the report only if P(side | finding) >= this (rule P6)
+findings:
+  - id: any_abnormality
+    source: "author-curated, needs review (root node; complement of CheXpert 'No Finding')"
+    label: "Any abnormality"
+    chexpert: null
+    lateralisable: false
+    reportable: false      # never stated as a sentence; its absent band produces the "no acute abnormality" impression
+    definition: "Root of the pathology hierarchy: any pathology present (support devices excluded)."
+    glossary: {term: null, page: null, match: none, source: no Fleischner glossary term, note: No glossary entry., review: needed}
+    phrase: {present: "", absent: "No acute cardiopulmonary abnormality.", possible: ""}
+  - id: lung_opacity
+    source: "CheXpert label hierarchy (Irvin et al. 2019): label"
+    label: "Lung Opacity"
+    chexpert: "Lung Opacity"
+    lateralisable: true
+    definition: "Any area of increased attenuation in the lung parenchyma."
+    glossary: {term: Opacity, page: 9, match: matched, paraphrase: 'A descriptive word for any region, focal or diffuse, that looks denser than expected, without implying a cause; the glossary notes the old word ''infiltrate'' is no longer recommended.', differs: 'We use lung opacity as the parent category of atelectasis, consolidation, edema and lung lesion (CheXpert hierarchy); the glossary treats opacity as a non-specific descriptor, not a category, and does not restrict it to the lung.', source: 'Fleischner Society glossary of terms for thoracic imaging, Radiology 2024;310(2):e232558, term ''Opacity'', p9', review: needed}
+    phrase: {present: "There is a {side}lung opacity.", absent: "No focal lung opacity.", possible: "Possible {side}lung opacity."}
+  - id: atelectasis
+    source: "CheXpert label hierarchy (Irvin et al. 2019): label"
+    label: "Atelectasis"
+    chexpert: "Atelectasis"
+    lateralisable: true
+    definition: "Partial or complete collapse of lung parenchyma with volume loss."
+    glossary: {term: 'Atelectasis (synonym: Collapse, p5)', page: 3, match: matched, paraphrase: 'Loss of air and volume in part or all of a lung, from compression, airway obstruction, loss of pleural negative pressure or surfactant failure; it looks denser and smaller and often displaces fissures, bronchi or vessels.', differs: 'No material difference; the glossary emphasises volume loss and its signs, which our label (from report text) does not require.', source: 'Fleischner Society glossary of terms for thoracic imaging, Radiology 2024;310(2):e232558, term ''Atelectasis'', p3', review: needed}
+    phrase: {present: "There is {side}atelectasis.", absent: "No atelectasis.", possible: "Possible {side}atelectasis."}
+  - id: consolidation
+    source: "CheXpert label hierarchy (Irvin et al. 2019): label"
+    label: "Consolidation"
+    chexpert: "Consolidation"
+    lateralisable: true
+    definition: "Airspace filled with fluid, pus, blood or cells, obscuring vessels."
+    glossary: {term: Consolidation, page: 5, match: matched, paraphrase: 'Air in the alveoli replaced by fluid or other material, so the lung looks uniformly denser; on CT it hides the underlying vessels and bronchi; the term says nothing about the cause.', differs: 'Our hierarchy places pneumonia under consolidation; the glossary uses consolidation as a cause-neutral descriptor, and pneumonia can appear as other opacities.', source: 'Fleischner Society glossary of terms for thoracic imaging, Radiology 2024;310(2):e232558, term ''Consolidation'', p5', review: needed}
+    phrase: {present: "There is {side}consolidation.", absent: "No focal consolidation.", possible: "Possible {side}consolidation."}
+  - id: pneumonia
+    source: "CheXpert label hierarchy (Irvin et al. 2019): label"
+    label: "Pneumonia"
+    chexpert: "Pneumonia"
+    lateralisable: true
+    definition: "Opacity attributed to infection; a clinical-radiological interpretation."
+    glossary: {term: Pneumonia, page: 11, match: matched, paraphrase: 'A diagnostic label for infection of the lung by any microorganism, focal or multifocal, which on imaging shows as opacity, possibly with air bronchograms, tree-in-bud pattern or pleural effusion.', differs: 'The glossary treats pneumonia as a clinical diagnosis that may appear as any opacity, not only consolidation; our is_a edge pneumonia -> consolidation (CheXpert convention) is narrower.', source: 'Fleischner Society glossary of terms for thoracic imaging, Radiology 2024;310(2):e232558, term ''Pneumonia'', p11', review: needed}
+    phrase: {present: "Findings are consistent with {side}pneumonia.", absent: "No radiographic evidence of pneumonia.", possible: "{Side}pneumonia is possible in the appropriate clinical setting."}
+  - id: edema
+    source: "CheXpert label hierarchy (Irvin et al. 2019): label"
+    label: "Edema"
+    chexpert: "Edema"
+    lateralisable: false   # no meaningful side: 55 % of ImaGenome side labels are default assignments (user decision 2026-10-06)
+    definition: "Interstitial or alveolar pulmonary oedema."
+    glossary: {term: null, page: null, match: none, source: no Fleischner glossary term, note: No glossary entry; the word appears only inside other entries., review: needed}
+    phrase: {present: "There is pulmonary edema.", absent: "No pulmonary edema.", possible: "Possible mild pulmonary edema."}
+  - id: lung_lesion
+    source: "CheXpert label hierarchy (Irvin et al. 2019): label"
+    label: "Lung Lesion"
+    chexpert: "Lung Lesion"
+    lateralisable: true
+    definition: "Pulmonary nodule or mass."
+    glossary: {term: Nodule (p9); Mass (p8), page: 9, match: matched, paraphrase: 'A nodule is a well-defined, roughly round opacity up to 30 mm across (below 6 mm a micronodule); a lesion larger than 30 mm is a mass.', differs: Our lung lesion merges nodules and masses of any size (CheXpert 'Lung Lesion'); the glossary separates them by the 30 mm cut-off and names micronodules separately., source: 'Fleischner Society glossary of terms for thoracic imaging, Radiology 2024;310(2):e232558, term ''Nodule'', p9', review: needed}
+    phrase: {present: "There is a {side}lung nodule or mass.", absent: "No suspicious pulmonary nodule or mass.", possible: "Possible {side}pulmonary nodule."}
+  - id: enlarged_cardiomediastinum
+    source: "CheXpert label hierarchy (Irvin et al. 2019): label"
+    label: "Enlarged Cardiomediastinum"
+    chexpert: "Enlarged Cardiomediastinum"
+    lateralisable: false   # midline structure; 68 % of ImaGenome side labels are default assignments
+    definition: "Widening of the cardiomediastinal silhouette, cardiac or mediastinal."
+    glossary: {term: null, page: null, match: none, source: no Fleischner glossary term, note: No glossary entry; the word appears only inside other entries., review: needed}
+    phrase: {present: "The cardiomediastinal silhouette is enlarged.", absent: "The cardiomediastinal silhouette is within normal limits.", possible: "The cardiomediastinal silhouette may be enlarged."}
+  - id: cardiomegaly
+    source: "CheXpert label hierarchy (Irvin et al. 2019): label"
+    label: "Cardiomegaly"
+    chexpert: "Cardiomegaly"
+    lateralisable: false   # midline structure; 87 % of ImaGenome side labels are default assignments
+    definition: "Enlargement of the cardiac silhouette."
+    glossary: {term: null, page: null, match: none, source: no Fleischner glossary term, note: No glossary entry; the word appears only inside other entries., review: needed}
+    phrase: {present: "The heart is enlarged.", absent: "Heart size is normal.", possible: "The heart size is borderline."}
+  - id: pleural_effusion
+    source: "CheXpert label hierarchy (Irvin et al. 2019): label"
+    label: "Pleural Effusion"
+    chexpert: "Pleural Effusion"
+    lateralisable: true
+    definition: "Fluid in the pleural space, including costophrenic angle blunting."
+    glossary: {term: Pleura - Effusion (sub-term), page: 10, match: matched, paraphrase: 'Too much fluid in the pleural space, from mechanical causes, edema, infection, inflammation or tumour; small effusions blunt the costophrenic angles and larger ones form dense areas in the dependent chest.', differs: No material difference; our definition also counts costophrenic angle blunting., source: 'Fleischner Society glossary of terms for thoracic imaging, Radiology 2024;310(2):e232558, term ''Pleura - Effusion'', p10', review: needed}
+    phrase: {present: "There is a {side}pleural effusion.", absent: "No pleural effusion.", possible: "Possible small {side}pleural effusion."}
+  - id: pleural_other
+    source: "CheXpert label hierarchy (Irvin et al. 2019): label"
+    label: "Pleural Other"
+    chexpert: "Pleural Other"
+    lateralisable: true
+    definition: "Pleural thickening, plaques, calcification or scarring."
+    glossary: {term: 'Pleura - Thickening and Plaque (sub-terms, p11); Apical Cap (p3)', page: 11, match: matched, paraphrase: 'Pleural thickening is a focal or diffuse increase in pleural thickness, often fibrotic after irritation, effusion or pneumothorax, or due to asbestos, infection or tumour; a plaque is a sharply marginated, raised flat area of parietal pleural thickening, often calcified and usually asbestos-related.', differs: 'Our ''pleural other'' lumps thickening, plaques, calcification and scarring together (CheXpert ''Pleural Other''); the glossary defines them as separate terms.', source: 'Fleischner Society glossary of terms for thoracic imaging, Radiology 2024;310(2):e232558, term ''Pleura - Thickening and Plaque'', p11', review: needed}
+    phrase: {present: "There is {side}pleural thickening.", absent: "No pleural thickening.", possible: "Possible {side}pleural thickening."}
+  - id: pneumothorax
+    source: "CheXpert label hierarchy (Irvin et al. 2019): label"
+    label: "Pneumothorax"
+    chexpert: "Pneumothorax"
+    lateralisable: true
+    definition: "Air in the pleural space."
+    glossary: {term: Pneumothorax, page: 11, match: matched, paraphrase: 'Air or gas in the pleural space between the parietal and visceral layers, which lets the lung partly or fully collapse; it may be spontaneous, traumatic or iatrogenic, and tension is a clinical diagnosis.', differs: No material difference., source: 'Fleischner Society glossary of terms for thoracic imaging, Radiology 2024;310(2):e232558, term ''Pneumothorax'', p11', review: needed}
+    phrase: {present: "There is a {side}pneumothorax.", absent: "No pneumothorax.", possible: "A small {side}pneumothorax cannot be excluded."}
+  - id: fracture
+    source: "CheXpert label hierarchy (Irvin et al. 2019): label"
+    label: "Fracture"
+    chexpert: "Fracture"
+    lateralisable: true
+    definition: "Fracture of a visible bone (rib, clavicle, spine)."
+    glossary: {term: null, page: null, match: none, source: no Fleischner glossary term, note: No glossary entry; the word appears only inside other entries., review: needed}
+    phrase: {present: "There is a {side}fracture.", absent: "No acute fracture.", possible: "Possible {side}fracture."}
+  - id: support_devices
+    source: "CheXpert label hierarchy (Irvin et al. 2019): label"
+    label: "Support Devices"
+    chexpert: "Support Devices"
+    lateralisable: true
+    definition: "Tubes, lines, catheters, pacemakers and other devices."
+    glossary: {term: null, page: null, match: none, source: no Fleischner glossary term, note: No glossary entry., review: needed}
+    phrase: {present: "Support devices are in place.", absent: "No support devices.", possible: "Possible support device."}
+# Rule N1 (PROVISIONAL, 2026-10-06): "No acute cardiopulmonary abnormality" is written only when the root
+# any_abnormality is in its absent band AND every finding on the critical list is in its own absent band.
+# If the root is absent but a critical finding is not, nothing is said about normality and findings are
+# reported as usual. Candidate lists A and B are compared in RESULTS.md; the user fixes the list after Stage 3.
+normal_call:
+  id: n1_critical_absent
+  source: "author-curated, needs review (inactive)"
+  status: inactive   # negative result 2026-10-06 (RESULTS.md): lists cost 22-36 % of normal calls without reducing
+                     # the effusion/pneumothorax misses. Root alone decides. Lists kept for review; needs-radiologist-review.
+  critical: []                                                                # inactive: root alone
+
+  candidates:
+    A: [pneumothorax, pleural_effusion]
+    B: [pneumothorax, pleural_effusion, edema, consolidation]
+  rationale: "Findings whose miss would make a 'normal' statement unsafe must themselves be confidently absent."
+# no_finding is no longer derived from "every pathology absent" (user decision 2026-10-06). It is the absent
+# band of the root node any_abnormality: P(finding) = P(any_abnormality) x P(finding | any_abnormality).
+is_a:
+  - {id: isa_001, child: atelectasis, parent: lung_opacity, rationale: "CheXpert label hierarchy (Irvin et al. 2019, Fig. 2): atelectasis is a lung opacity.", source: "CheXpert label hierarchy (Irvin et al. 2019)"}
+  - {id: isa_002, child: consolidation, parent: lung_opacity, rationale: "CheXpert label hierarchy: consolidation is a lung opacity.", source: "CheXpert label hierarchy (Irvin et al. 2019)"}
+  - {id: isa_003, child: edema, parent: lung_opacity, rationale: "CheXpert label hierarchy: edema is a lung opacity.", source: "CheXpert label hierarchy (Irvin et al. 2019)"}
+  - {id: isa_004, child: lung_lesion, parent: lung_opacity, rationale: "CheXpert label hierarchy: a lung lesion is a lung opacity.", source: "CheXpert label hierarchy (Irvin et al. 2019)"}
+  - {id: isa_005, child: pneumonia, parent: consolidation, rationale: "CheXpert label hierarchy: pneumonia sits under consolidation.", source: "CheXpert label hierarchy (Irvin et al. 2019)"}
+  - {id: isa_006, child: cardiomegaly, parent: enlarged_cardiomediastinum, rationale: "CheXpert label hierarchy: cardiomegaly is an enlarged cardiomediastinum.", source: "CheXpert label hierarchy (Irvin et al. 2019)"}
+  - {id: isa_101, child: lung_opacity, parent: any_abnormality, rationale: "Every pathology is an abnormality (root node).", source: "author-curated, needs review (root edge)"}
+  - {id: isa_102, child: enlarged_cardiomediastinum, parent: any_abnormality, rationale: "Every pathology is an abnormality (root node).", source: "author-curated, needs review (root edge)"}
+  - {id: isa_103, child: pleural_effusion, parent: any_abnormality, rationale: "Every pathology is an abnormality (root node).", source: "author-curated, needs review (root edge)"}
+  - {id: isa_104, child: pleural_other, parent: any_abnormality, rationale: "Every pathology is an abnormality (root node).", source: "author-curated, needs review (root edge)"}
+  - {id: isa_105, child: pneumothorax, parent: any_abnormality, rationale: "Every pathology is an abnormality (root node).", source: "author-curated, needs review (root edge)"}
+  - {id: isa_106, child: fracture, parent: any_abnormality, rationale: "Every pathology is an abnormality (root node).", source: "author-curated, needs review (root edge)"}
+may_occur_in:
+  # STATUS: author-curated, needs radiologist review (user decision 2026-10-07: kept; Chest ImaGenome has no validity table)
+  # anatomy node ids from anatomy.yaml; a localisation is valid if its node lies (via part_of) inside one of these
+  - {id: moi_001, finding: lung_opacity, anatomy: [lungs], rationale: "Parenchymal finding.", source: "author-curated, needs review", review: needed}
+  - {id: moi_002, finding: atelectasis, anatomy: [lungs], rationale: "Parenchymal finding.", source: "author-curated, needs review", review: needed}
+  - {id: moi_003, finding: consolidation, anatomy: [lungs], rationale: "Parenchymal finding.", source: "author-curated, needs review", review: needed}
+  - {id: moi_004, finding: pneumonia, anatomy: [lungs], rationale: "Parenchymal finding.", source: "author-curated, needs review", review: needed}
+  - {id: moi_005, finding: edema, anatomy: [lungs], rationale: "Parenchymal/interstitial finding.", source: "author-curated, needs review", review: needed}
+  - {id: moi_006, finding: lung_lesion, anatomy: [lungs], rationale: "Pulmonary nodule or mass.", source: "author-curated, needs review", review: needed}
+  - {id: moi_007, finding: enlarged_cardiomediastinum, anatomy: [mediastinum], rationale: "Mediastinal contour.", source: "author-curated, needs review", review: needed}
+  - {id: moi_008, finding: cardiomegaly, anatomy: [heart], rationale: "Cardiac silhouette.", source: "author-curated, needs review", review: needed}
+  - {id: moi_009, finding: pleural_effusion, anatomy: [pleura, lungs, diaphragm], rationale: "Pleural space; on radiographs projects over lung bases and the hemidiaphragm.", source: "author-curated, needs review", review: needed}
+  - {id: moi_010, finding: pleural_other, anatomy: [pleura, lungs], rationale: "Pleural surface; apical caps project over lung apices.", source: "author-curated, needs review", review: needed}
+  - {id: moi_011, finding: pneumothorax, anatomy: [pleura, lungs], rationale: "Pleural space; projects over the lung.", source: "author-curated, needs review", review: needed}
+  - {id: moi_012, finding: fracture, anatomy: [chest_wall], rationale: "Ribs, clavicles and spine.", source: "author-curated, needs review", review: needed}
+  - {id: moi_000, finding: any_abnormality, anatomy: [thorax, abdomen], rationale: "Root node; no specific anatomy.", source: "author-curated, needs review", review: needed}
+  - {id: moi_013, finding: support_devices, anatomy: [thorax, abdomen], rationale: "Devices may lie anywhere in the field.", source: "author-curated, needs review", review: needed}
+associated_with:
+  # candidate stage-two inputs; the KG decides which links exist, training decides the weights
+  - {id: aw_001, a: edema, b: cardiomegaly, rationale: "Cardiogenic pulmonary oedema with cardiac enlargement (heart failure).", source: "author-curated, needs review (clinical association)"}
+  - {id: aw_002, a: edema, b: pleural_effusion, rationale: "Fluid overload: oedema and effusions co-occur.", source: "author-curated, needs review (clinical association)"}
+  - {id: aw_003, a: pneumonia, b: pleural_effusion, rationale: "Parapneumonic effusion.", source: "author-curated, needs review (clinical association)"}
+  - {id: aw_004, a: atelectasis, b: pleural_effusion, rationale: "Compressive (passive) atelectasis adjacent to effusion.", source: "author-curated, needs review (clinical association)"}
+  - {id: aw_005, a: pneumothorax, b: support_devices, rationale: "Chest tubes and central lines are associated with (iatrogenic or treated) pneumothorax.", source: "author-curated, needs review (clinical association)"}
+  - {id: aw_006, a: fracture, b: pneumothorax, rationale: "Rib fractures and traumatic pneumothorax.", source: "author-curated, needs review (clinical association)"}
+pertinent_negatives:
+  # absent findings stated in the report; every other absent finding is omitted
+  - {id: pn_001, finding: pneumothorax, when: always, rationale: "Standard pertinent negative on chest radiographs.", source: "RadReport template 'Rad Chest 2 Views': 'No pneumothorax.'"}
+  - {id: pn_002, finding: pleural_effusion, when: always, rationale: "Standard pertinent negative.", source: "RadReport template 'Rad Chest 2 Views': pleural effusion pick-list / 'No pleural abnormalities'"}
+  - {id: pn_003, finding: consolidation, when: always, rationale: "Standard pertinent negative ('no focal consolidation').", source: "author-curated, needs review (template says 'The lungs are clear.')"}
+  - {id: pn_004, finding: cardiomegaly, when: always, rationale: "Heart size is reported on every study.", source: "RadReport template 'Rad Chest 2 Views': 'The heart is normal in size.'"}
+  - {id: pn_005, finding: edema, when: {any_present: [cardiomegaly, pleural_effusion]}, rationale: "State absence of oedema when a heart-failure pattern is otherwise suggested.", source: "RadReport template 'Rad Chest 2 Views': 'no evidence of associated pulmonary edema' (the condition is author-curated, needs review)"}

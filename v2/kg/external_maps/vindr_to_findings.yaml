@@ -1,0 +1,40 @@
+# VinDr-CXR (28 image-level labels) -> our findings. DRAFT — FOR RADIOLOGIST REVIEW. Not used for any
+# metric until reviewed. A VinDr label may map to several of our findings; is_a closure applies.
+# `evaluable: false` means VinDr does not annotate that finding reliably, so an absent label is NOT a
+# negative and the finding must be excluded from external metrics.
+version: 0.1
+status: draft-for-review
+source_labels_note: "Test labels are consensus (0/1). Train labels are per-radiologist (3 per image); not used for testing."
+findings:
+  lung_opacity:
+    source: "VinDr-CXR label list; mapping author-curated, needs review"
+    from: ["Lung Opacity", "Infiltration", "Consolidation", "Atelectasis", "Edema", "Nodule/Mass", "Lung tumor", "Pneumonia"]
+    evaluable: true
+    rationale: "Any parenchymal opacity label; children propagate by is_a."
+  atelectasis: {from: ["Atelectasis"], evaluable: true, rationale: "Direct.", source: "VinDr-CXR label list; mapping author-curated, needs review"}
+  consolidation: {from: ["Consolidation"], evaluable: true, rationale: "Direct.", source: "VinDr-CXR label list; mapping author-curated, needs review"}
+  pneumonia:
+    source: "VinDr-CXR label list; mapping author-curated, needs review"
+    from: ["Pneumonia"]
+    evaluable: true
+    rationale: "VinDr 'Pneumonia' is a disease-level label (radiologist impression). REVIEW: Tuberculosis not mapped."
+  edema: {from: ["Edema"], evaluable: true, rationale: "Direct; very rare in VinDr test.", source: "VinDr-CXR label list; mapping author-curated, needs review"}
+  lung_lesion:
+    source: "VinDr-CXR label list; mapping author-curated, needs review"
+    from: ["Nodule/Mass", "Lung tumor"]
+    evaluable: true
+    rationale: "Nodules and masses. 'Other lesion' is NOT mapped (often non-pulmonary). REVIEW 'Lung cavity', 'Lung cyst'."
+  enlarged_cardiomediastinum:
+    source: "VinDr-CXR label list; mapping author-curated, needs review"
+    from: ["Cardiomegaly", "Mediastinal shift"]
+    evaluable: false
+    rationale: "VinDr has no widened-mediastinum label; 'Aortic enlargement' is related but not equivalent. Only cardiomegaly propagates up; exclude from metrics."
+  cardiomegaly: {from: ["Cardiomegaly"], evaluable: true, rationale: "Direct.", source: "VinDr-CXR label list; mapping author-curated, needs review"}
+  pleural_effusion: {from: ["Pleural effusion"], evaluable: true, rationale: "Direct.", source: "VinDr-CXR label list; mapping author-curated, needs review"}
+  pleural_other: {from: ["Pleural thickening"], evaluable: true, rationale: "CheXpert Pleural Other includes thickening. REVIEW.", source: "VinDr-CXR label list; mapping author-curated, needs review"}
+  pneumothorax: {from: ["Pneumothorax"], evaluable: true, rationale: "Direct.", source: "VinDr-CXR label list; mapping author-curated, needs review"}
+  fracture: {from: ["Rib fracture", "Clavicle fracture"], evaluable: true, rationale: "VinDr annotates rib and clavicle fractures only; vertebral fractures are not labelled. REVIEW.", source: "VinDr-CXR label list; mapping author-curated, needs review"}
+  support_devices: {from: [], evaluable: false, rationale: "VinDr does not label devices. Exclude.", source: "VinDr-CXR label list; mapping author-curated, needs review"}
+no_finding: {from: ["No finding"], rationale: "Compare against our derived no_finding (support devices excluded).", source: "VinDr-CXR label list; mapping author-curated, needs review"}
+unmapped: ["Aortic enlargement", "Calcification", "Emphysema", "Enlarged PA", "ILD", "Lung cavity", "Lung cyst",
+           "Mediastinal shift (as its own finding)", "Pulmonary fibrosis", "Other lesion", "COPD", "Tuberculosis", "Other disease(s)"]

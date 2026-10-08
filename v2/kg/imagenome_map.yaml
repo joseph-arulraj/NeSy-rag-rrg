@@ -1,0 +1,64 @@
+# Chest ImaGenome silver labels -> our findings. DRAFT, for radiologist review.
+# A label may map to several findings. The is_a closure from findings.yaml is applied afterwards.
+version: 0.1
+status: draft-for-review
+map:
+  lung_opacity:
+    source: "Chest ImaGenome labels (semantics/attribute_relations_v1.txt); mapping author-curated, needs review"
+    labels: ["lung opacity", "airspace opacity", "infiltration"]
+    rationale: "Generic parenchymal opacity terms."
+  atelectasis:
+    source: "Chest ImaGenome labels (semantics/attribute_relations_v1.txt); mapping author-curated, needs review"
+    labels: ["atelectasis", "linear/patchy atelectasis", "lobar/segmental collapse"]
+    rationale: "All atelectasis/collapse variants."
+  consolidation:
+    source: "Chest ImaGenome labels (semantics/attribute_relations_v1.txt); mapping author-curated, needs review"
+    labels: ["consolidation"]
+    rationale: "Direct."
+  pneumonia:
+    source: "Chest ImaGenome labels (semantics/attribute_relations_v1.txt); mapping author-curated, needs review"
+    labels: ["pneumonia"]
+    rationale: "Direct (category 'disease')."
+  edema:
+    source: "Chest ImaGenome labels (semantics/attribute_relations_v1.txt); mapping author-curated, needs review"
+    labels: ["pulmonary edema/hazy opacity"]
+    rationale: "Direct. 'vascular congestion' is NOT mapped: CheXpert treats it separately from edema."
+  lung_lesion:
+    source: "Chest ImaGenome labels (semantics/attribute_relations_v1.txt); mapping author-curated, needs review"
+    labels: ["lung lesion", "mass/nodule (not otherwise specified)", "multiple masses/nodules", "calcified nodule", "lung cancer"]
+    rationale: "CheXpert 'Lung Lesion' covers nodules and masses. Calcified nodules included; REVIEW."
+  enlarged_cardiomediastinum:
+    source: "Chest ImaGenome labels (semantics/attribute_relations_v1.txt); mapping author-curated, needs review"
+    labels: ["mediastinal widening", "superior mediastinal mass/enlargement"]
+    rationale: "Widened/enlarged mediastinum. REVIEW whether 'enlarged hilum' belongs here (not mapped)."
+  cardiomegaly:
+    source: "Chest ImaGenome labels (semantics/attribute_relations_v1.txt); mapping author-curated, needs review"
+    labels: ["enlarged cardiac silhouette"]
+    rationale: "Direct."
+  pleural_effusion:
+    source: "Chest ImaGenome labels (semantics/attribute_relations_v1.txt); mapping author-curated, needs review"
+    labels: ["pleural effusion", "costophrenic angle blunting", "hydropneumothorax"]
+    rationale: "Blunting is commonly reported as small effusion (CheXpert labeler maps it to effusion). REVIEW."
+  pleural_other:
+    source: "Chest ImaGenome labels (semantics/attribute_relations_v1.txt); mapping author-curated, needs review"
+    labels: ["pleural/parenchymal scarring"]
+    rationale: "CheXpert 'Pleural Other' = thickening/fibrosis/scarring. ImaGenome merges pleural and parenchymal scarring; REVIEW."
+  pneumothorax:
+    source: "Chest ImaGenome labels (semantics/attribute_relations_v1.txt); mapping author-curated, needs review"
+    labels: ["pneumothorax", "hydropneumothorax"]
+    rationale: "Direct."
+  fracture:
+    source: "Chest ImaGenome labels (semantics/attribute_relations_v1.txt); mapping author-curated, needs review"
+    labels: ["rib fracture", "clavicle fracture", "spinal fracture"]
+    rationale: "All fracture labels."
+  support_devices:
+    source: "Chest ImaGenome labels (semantics/attribute_relations_v1.txt); mapping author-curated, needs review"
+    categories: ["tubesandlines", "device"]
+    rationale: "Any tube, line or device."
+lateral_regions:
+  # regions that carry the patient's side. Cardiac and cardiophrenic regions are excluded on purpose:
+  # 'left cardiac silhouette' does not mean a left-sided lung finding.
+  left: ["left lung", "left apical zone", "left upper lung zone", "left mid lung zone", "left lower lung zone",
+         "left hilar structures", "left costophrenic angle", "left hemidiaphragm", "left clavicle"]
+  right: ["right lung", "right apical zone", "right upper lung zone", "right mid lung zone", "right lower lung zone",
+          "right hilar structures", "right costophrenic angle", "right hemidiaphragm", "right clavicle"]

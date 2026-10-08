@@ -1,0 +1,2 @@
+# Template report options (v2). Changing a flag changes presentation only, never probabilities or bands.
+show_case_evidence: false     # item B (2026-10-07): add "seen in N of k similar cases" after each stated finding

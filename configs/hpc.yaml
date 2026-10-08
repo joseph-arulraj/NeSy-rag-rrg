@@ -5,19 +5,19 @@
 # =============================================================================
 
 paths:
-  mimic_root: /CHANGE_ME/mimic-cxr-jpg                 # contains files/ and the *.csv.gz files
-  mimic_reports_zip: null
-  mimic_reports_dir: /CHANGE_ME/mimic-cxr/files        # extracted MIMIC-CXR report .txt tree
-  model_weights_dir: /CHANGE_ME/model_weights
-  clear_checkpoint: /CHANGE_ME/model_weights/best_model.pt
-  concepts_csv: /CHANGE_ME/model_weights/mimic_concepts.csv
-  concept_embeddings: /CHANGE_ME/model_weights/concept_embeddings_368294.pt
-  output_dir: /CHANGE_ME/outputs
-  index_dir: /CHANGE_ME/outputs/index
+  mimic_root: /scratch/prj/bhi_zihe_imaging/mimic_cxr_full/mimic-cxr-jpg/mimic-cxr-jpg-2.1.0.physionet.org/                 # contains files/ and the *.csv.gz files
+  mimic_reports_zip: /scratch/prj/bhi_zihe_imaging/data/raw/mimic-cxr-reports.zip
+  mimic_reports_dir: null        # extracted MIMIC-CXR report .txt tree
+  model_weights_dir: /scratch/prj/bhi_zihe_imaging/NeSy-rag-rrg/model_weights
+  clear_checkpoint: /scratch/prj/bhi_zihe_imaging/NeSy-rag-rrg/model_weights/best_model.pt
+  concepts_csv: /scratch/prj/bhi_zihe_imaging/NeSy-rag-rrg/model_weights/mimic_concepts.csv
+  concept_embeddings: /scratch/prj/bhi_zihe_imaging/NeSy-rag-rrg/model_weights/concept_embeddings_368294.pt
+  output_dir: /scratch/prj/bhi_zihe_imaging/NeSy-rag-rrg/outputs
+  index_dir: /scratch/prj/bhi_zihe_imaging/NeSy-rag-rrg/outputs/index
 
 runtime:
   device: cuda
-  torch_hub_dir: /CHANGE_ME/torch_hub                  # populate once on a login node: python scripts/cache_dinov2.py --config configs/hpc.yaml
+  torch_hub_dir: /scratch/prj/bhi_zihe_imaging/NeSy-rag-rrg/model_weights/torch_hub                  # populate once on a login node: python scripts/cache_dinov2.py --config configs/hpc.yaml
   num_workers: 16                                      # parallel JPEG decoding for the index build
 
 clear:
@@ -33,12 +33,12 @@ concept_bank:
   score_batch_size: 256
 
 radlex:
-  raw_owl_path: /CHANGE_ME/data/radlex/raw/RadLex.owl
-  snapshot_path: /CHANGE_ME/model_weights/radlex_snapshot.json.gz
+  raw_owl_path: /scratch/prj/bhi_zihe_imaging/NeSy-rag-rrg/data/radlex/raw/RadLex.owl
+  snapshot_path: /scratch/prj/bhi_zihe_imaging/NeSy-rag-rrg/data/radlex/raw/radlex_snapshot.json.gz
 
 radgraph:
   device: cuda            # optional speedup; CPU also works (see default.yaml note)
   batch_size: 256
 
 tagging:
-  checkpoint_dir: /CHANGE_ME/outputs/concept_tagging_checkpoints
+  checkpoint_dir: /scratch/prj/bhi_zihe_imaging/NeSy-rag-rrg/model_weights/outputs/concept_tagging_checkpoints
